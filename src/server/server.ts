@@ -12,8 +12,7 @@ class App {
     this.port = port;
     const app = express();
     app.use(express.static(path.join(__dirname, "../client")));
-    app.use(
-      "/build/three.module.js", express.static(path.join(__dirname, "../../node_modules/three/build/three.module.js")));
+    app.use("/build/three.module.js", express.static(path.join(__dirname, "../../node_modules/three/build/three.module.js")));
     app.use("/jsm/controls/OrbitControls", express.static(path.join(__dirname, "../../node_modules/three/examples/jsm/controls/OrbitControls.js")));
     app.use("/jsm/libs/stats.module", express.static(path.join(__dirname, "../../node_modules/three/examples/jsm/libs/stats.module.js")));
     app.use('/jsm/libs/dat.gui.module', express.static(path.join(__dirname, "../../node_modules/three/examples/jsm/libs/dat.gui.module.js")));
