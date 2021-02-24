@@ -10,11 +10,18 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
-//controls.addEventListener('change', render)
-const geometry = new THREE.BoxGeometry();
+const boxGeometry = new THREE.BoxGeometry();
+const sphereGeometry = new THREE.SphereGeometry();
+const iscosahedronGeometry = new THREE.IcosahedronGeometry();
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-const cube = new THREE.Mesh(geometry, material);
+const cube = new THREE.Mesh(boxGeometry, material);
+cube.position.x = 2;
 scene.add(cube);
+const sphere = new THREE.Mesh(sphereGeometry, material);
+scene.add(sphere);
+const iscosahedron = new THREE.Mesh(iscosahedronGeometry, material);
+iscosahedron.position.x = -2;
+scene.add(iscosahedron);
 camera.position.z = 2;
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
@@ -41,11 +48,66 @@ scaleCubeFolder.add(cube.scale, "y", -5, 5, 0.01);
 scaleCubeFolder.add(cube.scale, "z", -5, 5, 0.01);
 cubeFolder.add(cube, "visible");
 cubeFolder.open();
+const cubeData = {
+    width: 1,
+    height: 1,
+    depth: 1,
+    widthSegments: 1,
+    heightSegments: 1,
+    depthSegments: 1
+};
+const cubePropertiesFolder = cubeFolder.addFolder("Properties");
+cubePropertiesFolder.add(cubeData, 'width', 1, 30).onChange(regenerateBoxGeometry);
+cubePropertiesFolder.add(cubeData, 'height', 1, 30).onChange(regenerateBoxGeometry);
+cubePropertiesFolder.add(cubeData, 'depth', 1, 30).onChange(regenerateBoxGeometry);
+cubePropertiesFolder.add(cubeData, 'widthSegments', 1, 30).onChange(regenerateBoxGeometry);
+cubePropertiesFolder.add(cubeData, 'heightSegments', 1, 30).onChange(regenerateBoxGeometry);
+cubePropertiesFolder.add(cubeData, 'depthSegments', 1, 30).onChange(regenerateBoxGeometry);
+function regenerateBoxGeometry() {
+    let newGeometry = new THREE.BoxGeometry(cubeData.width, cubeData.height, cubeData.depth, cubeData.widthSegments, cubeData.heightSegments, cubeData.depthSegments);
+    cube.geometry.dispose(); //clears current geometry from memory
+    cube.geometry = newGeometry;
+}
+const sphereData = {
+    radius: 1,
+    widthSegments: 8,
+    heightSegments: 6,
+    phiStart: 0,
+    phiLength: Math.PI * 2,
+    thetaStart: 0,
+    thetaLength: Math.PI
+};
+const sphereFolder = gui.addFolder("Sphere");
+const spherePropertiesFolder = sphereFolder.addFolder("Properties");
+spherePropertiesFolder.add(sphereData, 'radius', .1, 30).onChange(regenerateSphereGeometry);
+spherePropertiesFolder.add(sphereData, 'widthSegments', 1, 32).onChange(regenerateSphereGeometry);
+spherePropertiesFolder.add(sphereData, 'heightSegments', 1, 16).onChange(regenerateSphereGeometry);
+spherePropertiesFolder.add(sphereData, 'phiStart', 0, Math.PI * 2).onChange(regenerateSphereGeometry);
+spherePropertiesFolder.add(sphereData, 'phiLength', 0, Math.PI * 2).onChange(regenerateSphereGeometry);
+spherePropertiesFolder.add(sphereData, 'thetaStart', 0, Math.PI).onChange(regenerateSphereGeometry);
+spherePropertiesFolder.add(sphereData, 'thetaLength', 0, Math.PI).onChange(regenerateSphereGeometry);
+function regenerateSphereGeometry() {
+    let newGeometry = new THREE.SphereGeometry(sphereData.radius, sphereData.widthSegments, sphereData.heightSegments, sphereData.phiStart, sphereData.phiLength, sphereData.thetaStart, sphereData.thetaLength);
+    sphere.geometry.dispose();
+    sphere.geometry = newGeometry;
+}
+const iscosahedronData = {
+    radius: 1,
+    detail: 0,
+};
+const iscosahedronFolder = gui.addFolder("Iscosahedron");
+const iscosahedronPropertiesFolder = iscosahedronFolder.addFolder("Properties");
+iscosahedronPropertiesFolder.add(iscosahedronData, "radius", 1, 10).onChange(regenerateIscosahedronGeometry);
+iscosahedronPropertiesFolder.add(iscosahedronData, "detail", 0, 5).step(1).onChange(regenerateIscosahedronGeometry);
+function regenerateIscosahedronGeometry() {
+    let newGeometry = new THREE.IcosahedronGeometry(iscosahedronData.radius, iscosahedronData.detail);
+    iscosahedron.geometry.dispose();
+    iscosahedron.geometry = newGeometry;
+}
 var animate = function () {
     requestAnimationFrame(animate);
-    // cube.rotation.x += 0.01;
-    // cube.rotation.y += 0.01;
-    renderer.render(scene, camera);
+    render();
+    document.getElementById("debug1").innerText = "Matrix\n" + cube.matrix.elements.toString().replace(/,/g, "\n");
     stats.update();
 };
 function render() {
