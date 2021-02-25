@@ -16,8 +16,12 @@ const sphereGeometry = new THREE.SphereGeometry();
 const icosahedronGeometry = new THREE.IcosahedronGeometry(1, 0);
 const planeGeometry = new THREE.PlaneGeometry();
 const torusKnotGeometry = new THREE.TorusKnotGeometry();
-// const material: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true })
-const material = new THREE.MeshNormalMaterial();
+const material = new THREE.MeshBasicMaterial(); //{ color: 0x00ff00, wireframe: true })
+//const texture = new THREE.TextureLoader().load("img/grid.png")
+//material.map = texture
+const envTexture = new THREE.CubeTextureLoader().load(["img/px_50.png", "img/nx_50.png", "img/py_50.png", "img/ny_50.png", "img/pz_50.png", "img/nz_50.png"]);
+envTexture.mapping = THREE.CubeRefractionMapping;
+material.envMap = envTexture;
 const cube = new THREE.Mesh(boxGeometry, material);
 cube.position.x = 5;
 scene.add(cube);
@@ -48,7 +52,12 @@ var options = {
         "FrontSide": THREE.FrontSide,
         "BackSide": THREE.BackSide,
         "DoubleSide": THREE.DoubleSide,
-    }
+    },
+    combine: {
+        "MultiplyOperation": THREE.MultiplyOperation,
+        "MixOperation": THREE.MixOperation,
+        "AddOperation": THREE.AddOperation
+    },
 };
 const gui = new GUI();
 const materialFolder = gui.addFolder('THREE.Material');
@@ -60,8 +69,19 @@ materialFolder.add(material, 'alphaTest', 0, 1, 0.01).onChange(() => updateMater
 materialFolder.add(material, 'visible');
 materialFolder.add(material, 'side', options.side).onChange(() => updateMaterial());
 materialFolder.open();
+const data = {
+    color: material.color.getHex(),
+};
+const meshBasicMaterialFolder = gui.addFolder('THREE.MeshBasicMaterial');
+meshBasicMaterialFolder.addColor(data, 'color').onChange(() => { material.color.setHex(Number(data.color.toString().replace('#', '0x'))); });
+meshBasicMaterialFolder.add(material, 'wireframe');
+meshBasicMaterialFolder.add(material, 'combine', options.combine).onChange(() => updateMaterial());
+meshBasicMaterialFolder.add(material, 'reflectivity', 0, 1);
+meshBasicMaterialFolder.add(material, 'refractionRatio', 0, 1);
+meshBasicMaterialFolder.open();
 function updateMaterial() {
     material.side = Number(material.side);
+    material.combine = Number(material.combine);
     material.needsUpdate = true;
 }
 var animate = function () {
