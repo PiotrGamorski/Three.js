@@ -4,12 +4,13 @@ import Stats from '/jsm/libs/stats.module'
 import { GUI } from '/jsm/libs/dat.gui.module'
 
 const scene: THREE.Scene = new THREE.Scene()
+//scene.background = new THREE.Color(0xff0000)
 
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
-const light = new THREE.PointLight(0xffffff, 1);
-light.position.set(5, 5, 5);
+const light = new THREE.PointLight(0xffffff, 2);
+light.position.set(0, 5, 10);
 scene.add(light);
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -19,48 +20,30 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
 const controls = new OrbitControls(camera, renderer.domElement)
+controls.screenSpacePanning = true //so that panning up and down doesn't zoom in/out
+//controls.addEventListener('change', render)
 
-const boxGeometry: THREE.BoxGeometry = new THREE.BoxGeometry()
-const sphereGeometry: THREE.SphereGeometry = new THREE.SphereGeometry()
-const icosahedronGeometry: THREE.IcosahedronGeometry = new THREE.IcosahedronGeometry(1, 0)
-const planeGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry()
-const torusKnotGeometry: THREE.TorusKnotGeometry = new THREE.TorusKnotGeometry()
+const planeGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry(3.6, 1.8)//, 360, 180)
 
-const threeTone = new THREE.TextureLoader().load("img/threeTone.jpg")
-threeTone.minFilter = THREE.NearestFilter;
-threeTone.magFilter = THREE.NearestFilter;
+const material: THREE.MeshPhongMaterial = new THREE.MeshPhongMaterial()
 
-const fourTone = new THREE.TextureLoader().load("img/fourTone.jpg")
-fourTone.minFilter = THREE.NearestFilter;
-fourTone.magFilter = THREE.NearestFilter;
+//const texture = new THREE.TextureLoader().load("img/grid.png")
+const texture = new THREE.TextureLoader().load("img/worldColour.5400x2700.jpg")
+material.map = texture
+// const envTexture = new THREE.CubeTextureLoader().load(["img/px_eso0932a.jpg", "img/nx_eso0932a.jpg", "img/py_eso0932a.jpg", "img/ny_eso0932a.jpg", "img/pz_eso0932a.jpg", "img/nz_eso0932a.jpg"])
+// envTexture.mapping = THREE.CubeReflectionMapping
+// material.envMap = envTexture
 
-const fiveTone = new THREE.TextureLoader().load("img/fiveTone.jpg")
-fiveTone.minFilter = THREE.NearestFilter;
-fiveTone.magFilter = THREE.NearestFilter;
+//const specularTexture = new THREE.TextureLoader().load("img/earthSpecular.jpg")
+// material.specularMap = specularTexture
 
-const material: THREE.MeshToonMaterial = new THREE.MeshToonMaterial()
-
-const cube: THREE.Mesh = new THREE.Mesh(boxGeometry, material)
-cube.position.x = 5
-scene.add(cube)
-
-const sphere: THREE.Mesh = new THREE.Mesh(sphereGeometry, material)
-sphere.position.x = 3
-scene.add(sphere)
-
-const icosahedron: THREE.Mesh = new THREE.Mesh(icosahedronGeometry, material)
-icosahedron.position.x = 0
-scene.add(icosahedron)
+const displacementMap = new THREE.TextureLoader().load("img/gebco_bathy.5400x2700_8bit.jpg")
+material.displacementMap = displacementMap
 
 const plane: THREE.Mesh = new THREE.Mesh(planeGeometry, material)
-plane.position.x = -2
 scene.add(plane)
 
-const torusKnot: THREE.Mesh = new THREE.Mesh(torusKnotGeometry, material)
-torusKnot.position.x = -5
-scene.add(torusKnot)
-
-camera.position.z = 5
+camera.position.z = 3
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -78,26 +61,9 @@ var options = {
         "FrontSide": THREE.FrontSide,
         "BackSide": THREE.BackSide,
         "DoubleSide": THREE.DoubleSide,
-    },
-    gradientMap: {
-        "Default": null,
-        "threeTone": "threeTone",
-        "fourTone": "fourTone",
-        "fiveTone": "fiveTone"
     }
 }
 const gui = new GUI()
-
-var data = {
-    lightColor : light.color.getHex(),
-    color: material.color.getHex(),
-    gradientMap: "fiveTone"
-}
-material.gradientMap = fiveTone
-
-const lightFolder = gui.addFolder('THREE.Light')
-lightFolder.addColor(data, 'lightColor').onChange(() => { light.color.setHex(Number(data.lightColor.toString().replace('#', '0x'))) })
-lightFolder.add(light, "intensity", 0, 4)
 
 const materialFolder = gui.addFolder('THREE.Material')
 materialFolder.add(material, 'transparent')
@@ -109,31 +75,55 @@ materialFolder.add(material, 'visible')
 materialFolder.add(material, 'side', options.side).onChange(() => updateMaterial())
 //materialFolder.open()
 
-var meshToonMaterialFolder = gui.addFolder('THREE.MeshToonMaterial')
-meshToonMaterialFolder.addColor(data, 'color').onChange(() => { material.color.setHex(Number(data.color.toString().replace('#', '0x'))) })
-meshToonMaterialFolder.add(material, 'flatShading').onChange(() => updateMaterial())
-meshToonMaterialFolder.add(data, 'gradientMap', options.gradientMap).onChange(() => updateMaterial())
-meshToonMaterialFolder.open()
+var data = {
+    color: material.color.getHex(),
+    emissive: material.emissive.getHex(),
+    specular: material.specular.getHex()
+};
+
+var meshPhongMaterialFolder = gui.addFolder('THREE.meshPhongMaterialFolder');
+
+meshPhongMaterialFolder.addColor(data, 'color').onChange(() => { material.color.setHex(Number(data.color.toString().replace('#', '0x'))) })
+meshPhongMaterialFolder.addColor(data, 'emissive').onChange(() => { material.emissive.setHex(Number(data.emissive.toString().replace('#', '0x'))) })
+meshPhongMaterialFolder.addColor(data, 'specular').onChange(() => { material.specular.setHex(Number(data.specular.toString().replace('#', '0x'))) });
+meshPhongMaterialFolder.add(material, 'shininess', 0, 1024);
+meshPhongMaterialFolder.add(material, 'wireframe')
+meshPhongMaterialFolder.add(material, 'flatShading').onChange(() => updateMaterial())
+meshPhongMaterialFolder.add(material, 'reflectivity', 0, 1)
+meshPhongMaterialFolder.add(material, 'refractionRatio', 0, 1)
+meshPhongMaterialFolder.add(material, 'displacementScale', 0, 1, 0.01)
+meshPhongMaterialFolder.add(material, 'displacementBias', -1, 1, 0.01)
+meshPhongMaterialFolder.open()
+
+var planeData = {
+    width: 3.6,
+    height: 1.8,
+    widthSegments: 1,
+    heightSegments: 1
+};
+const planePropertiesFolder = gui.addFolder("PlaneGeometry")
+//planePropertiesFolder.add(planeData, 'width', 1, 30).onChange(regeneratePlaneGeometry)
+//planePropertiesFolder.add(planeData, 'height', 1, 30).onChange(regeneratePlaneGeometry)
+planePropertiesFolder.add(planeData, 'widthSegments', 1, 360).onChange(regeneratePlaneGeometry)
+planePropertiesFolder.add(planeData, 'heightSegments', 1, 180).onChange(regeneratePlaneGeometry)
+planePropertiesFolder.open()
+
+function regeneratePlaneGeometry() {
+    let newGeometry = new THREE.PlaneGeometry(
+        planeData.width, planeData.height, planeData.widthSegments, planeData.heightSegments
+    )
+    plane.geometry.dispose()
+    plane.geometry = newGeometry
+}
+
 
 function updateMaterial() {
     material.side = Number(material.side)
-    material.gradientMap = eval(data.gradientMap as any)
     material.needsUpdate = true
 }
 
 var animate = function () {
     requestAnimationFrame(animate)
-
-    icosahedron.rotation.y += .005
-    icosahedron.rotation.x += .005
-    cube.rotation.y += .005
-    cube.rotation.x += .005
-    torusKnot.rotation.y += .005
-    torusKnot.rotation.x += .005
-    sphere.rotation.y += .005
-    sphere.rotation.x += .005
-    plane.rotation.y += .005
-    plane.rotation.x += .005
 
     render()
 
