@@ -14,18 +14,27 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.addEventListener('change', () => console.log("Controls Change")); //this line is unnecessary if you are already re-rendering within the animation loop 
+controls.addEventListener('start', () => console.log("Controls Start Event"));
+controls.addEventListener('end', () => console.log("Controls End Event"));
 controls.screenSpacePanning = true; //so that panning up and down doesn't zoom in/out
+controls.enableKeys = true;
+controls.keys = {
+    LEFT: 37,
+    UP: 38,
+    RIGHT: 39,
+    BOTTOM: 40
+};
+controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN
+};
 //controls.addEventListener('change', render)
-const planeGeometry = new THREE.PlaneGeometry(3.6, 1.8); //, 360, 180)
+const planeGeometry = new THREE.PlaneGeometry(3.6, 1.8, 360, 180);
 const material = new THREE.MeshPhongMaterial();
-//const texture = new THREE.TextureLoader().load("img/grid.png")
 const texture = new THREE.TextureLoader().load("img/worldColour.5400x2700.jpg");
 material.map = texture;
-// const envTexture = new THREE.CubeTextureLoader().load(["img/px_eso0932a.jpg", "img/nx_eso0932a.jpg", "img/py_eso0932a.jpg", "img/ny_eso0932a.jpg", "img/pz_eso0932a.jpg", "img/nz_eso0932a.jpg"])
-// envTexture.mapping = THREE.CubeReflectionMapping
-// material.envMap = envTexture
-//const specularTexture = new THREE.TextureLoader().load("img/earthSpecular.jpg")
-// material.specularMap = specularTexture
 const displacementMap = new THREE.TextureLoader().load("img/gebco_bathy.5400x2700_8bit.jpg");
 material.displacementMap = displacementMap;
 const plane = new THREE.Mesh(planeGeometry, material);
@@ -81,8 +90,8 @@ var planeData = {
     heightSegments: 1
 };
 const planePropertiesFolder = gui.addFolder("PlaneGeometry");
-//planePropertiesFolder.add(planeData, 'width', 1, 30).onChange(regeneratePlaneGeometry)
-//planePropertiesFolder.add(planeData, 'height', 1, 30).onChange(regeneratePlaneGeometry)
+planePropertiesFolder.add(planeData, 'width', 1, 30).onChange(regeneratePlaneGeometry);
+planePropertiesFolder.add(planeData, 'height', 1, 30).onChange(regeneratePlaneGeometry);
 planePropertiesFolder.add(planeData, 'widthSegments', 1, 360).onChange(regeneratePlaneGeometry);
 planePropertiesFolder.add(planeData, 'heightSegments', 1, 180).onChange(regeneratePlaneGeometry);
 planePropertiesFolder.open();
@@ -97,6 +106,7 @@ function updateMaterial() {
 }
 var animate = function () {
     requestAnimationFrame(animate);
+    controls.update();
     render();
     stats.update();
 };
