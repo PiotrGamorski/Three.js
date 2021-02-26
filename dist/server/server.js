@@ -14,8 +14,7 @@ class App {
         app.use(express_1.default.static(path_1.default.join(__dirname, '../client')));
         app.use('/build/three.module.js', express_1.default.static(path_1.default.join(__dirname, '../../node_modules/three/build/three.module.js')));
         app.use('/jsm/controls/OrbitControls', express_1.default.static(path_1.default.join(__dirname, '../../node_modules/three/examples/jsm/controls/OrbitControls.js')));
-        app.use('/jsm/controls/DragControls', express_1.default.static(path_1.default.join(__dirname, '../../node_modules/three/examples/jsm/controls/DragControls.js')));
-        app.use('/jsm/controls/TransformControls', express_1.default.static(path_1.default.join(__dirname, '../../node_modules/three/examples/jsm/controls/TransformControls.js')));
+        app.use('/jsm/loaders/OBJLoader', express_1.default.static(path_1.default.join(__dirname, '../../node_modules/three/examples/jsm/loaders/OBJLoader.js')));
         app.use('/jsm/libs/stats.module', express_1.default.static(path_1.default.join(__dirname, '../../node_modules/three/examples/jsm/libs/stats.module.js')));
         this.server = new http_1.default.Server(app);
     }
