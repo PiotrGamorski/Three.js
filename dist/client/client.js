@@ -1,4 +1,6 @@
 import * as THREE from '/build/three.module.js';
+import { OrbitControls } from '/jsm/controls/OrbitControls';
+import { DragControls } from '/jsm/controls/DragControls';
 import { TransformControls } from '/jsm/controls/TransformControls';
 import Stats from '/jsm/libs/stats.module';
 const scene = new THREE.Scene();
@@ -10,22 +12,51 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 renderer.domElement.ondragstart = function (event) { event.preventDefault(); return false; };
 const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshNormalMaterial();
+const material = new THREE.MeshNormalMaterial({ transparent: true });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
-const controls = new TransformControls(camera, renderer.domElement);
-controls.attach(cube);
-scene.add(controls);
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+const dragControls = new DragControls([cube], camera, renderer.domElement);
+dragControls.addEventListener("hoveron", function () {
+    orbitControls.enabled = false;
+});
+dragControls.addEventListener("hoveroff", function () {
+    orbitControls.enabled = true;
+});
+dragControls.addEventListener('dragstart', function (event) {
+    event.object.material.opacity = 0.33;
+    orbitControls.enabled = false;
+});
+dragControls.addEventListener('dragend', function (event) {
+    event.object.material.opacity = 1;
+    orbitControls.enabled = true;
+});
+const transformControls = new TransformControls(camera, renderer.domElement);
+transformControls.attach(cube);
+transformControls.setMode("rotate");
+scene.add(transformControls);
+transformControls.addEventListener('dragging-changed', function (event) {
+    orbitControls.enabled = !event.value;
+    dragControls.enabled = !event.value;
+});
+transformControls.addEventListener("mouseDown", () => {
+    orbitControls.enabled = false;
+});
+transformControls.addEventListener("mouseUp", () => {
+    orbitControls.enabled = true;
+});
+const backGroundTexture = new THREE.CubeTextureLoader().load(["img/px_eso0932a.jpg", "img/nx_eso0932a.jpg", "img/py_eso0932a.jpg", "img/ny_eso0932a.jpg", "img/pz_eso0932a.jpg", "img/nz_eso0932a.jpg"]);
+scene.background = backGroundTexture;
 window.addEventListener('keydown', function (event) {
     switch (event.key) {
         case "g":
-            controls.setMode("translate");
+            transformControls.setMode("translate");
             break;
         case "r":
-            controls.setMode("rotate");
+            transformControls.setMode("rotate");
             break;
         case "s":
-            controls.setMode("scale");
+            transformControls.setMode("scale");
             break;
     }
 });
@@ -43,6 +74,7 @@ var animate = function () {
     requestAnimationFrame(animate);
     render();
     stats.update();
+    orbitControls.update();
 };
 function render() {
     renderer.render(scene, camera);
