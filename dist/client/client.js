@@ -1,42 +1,35 @@
 import * as THREE from '/build/three.module.js';
-import { DragControls } from '/jsm/controls/DragControls';
+import { TransformControls } from '/jsm/controls/TransformControls';
 import Stats from '/jsm/libs/stats.module';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
-var light = new THREE.PointLight();
-light.position.set(10, 10, 10);
-scene.add(light);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+renderer.domElement.ondragstart = function (event) { event.preventDefault(); return false; };
 const geometry = new THREE.BoxGeometry();
-//const material: THREE.MeshPhongMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true })
-//const cube: THREE.Mesh = new THREE.Mesh(geometry, material)
-//scene.add(cube)
-const material = [
-    new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true }),
-    new THREE.MeshPhongMaterial({ color: 0x00ff00, transparent: true }),
-    new THREE.MeshPhongMaterial({ color: 0x0000ff, transparent: true })
-];
-const cubes = [
-    new THREE.Mesh(geometry, material[0]),
-    new THREE.Mesh(geometry, material[1]),
-    new THREE.Mesh(geometry, material[2])
-];
-cubes[0].position.x = -2;
-cubes[1].position.x = 0;
-cubes[2].position.x = 2;
-cubes.forEach(c => scene.add(c));
-const controls = new DragControls(cubes, camera, renderer.domElement);
-controls.addEventListener('dragstart', function (event) {
-    event.object.material.opacity = 0.33;
+const material = new THREE.MeshNormalMaterial();
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+const controls = new TransformControls(camera, renderer.domElement);
+controls.attach(cube);
+scene.add(controls);
+window.addEventListener('keydown', function (event) {
+    switch (event.key) {
+        case "g":
+            controls.setMode("translate");
+            break;
+        case "r":
+            controls.setMode("rotate");
+            break;
+        case "s":
+            controls.setMode("scale");
+            break;
+    }
 });
-controls.addEventListener('dragend', function (event) {
-    event.object.material.opacity = 1;
-});
-camera.position.z = 3;
+camera.position.z = 2;
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -48,12 +41,6 @@ const stats = Stats();
 document.body.appendChild(stats.dom);
 var animate = function () {
     requestAnimationFrame(animate);
-    cubes[0].rotation.x += 0.010;
-    cubes[0].rotation.y += 0.011;
-    cubes[1].rotation.x += 0.012;
-    cubes[1].rotation.y += 0.013;
-    cubes[2].rotation.x += 0.014;
-    cubes[2].rotation.y += 0.015;
     render();
     stats.update();
 };
