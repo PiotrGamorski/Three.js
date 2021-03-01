@@ -1,6 +1,7 @@
 import * as THREE from '/build/three.module.js';
 import { OrbitControls } from '/jsm/controls/OrbitControls';
 import { OBJLoader } from '/jsm/loaders/OBJLoader';
+import { MTLLoader } from '/jsm/loaders/MTLLoader';
 import Stats from '/jsm/libs/stats.module';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
@@ -15,22 +16,22 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-const objLoader = new OBJLoader();
-objLoader.load('models/cube.obj', (object) => {
-    console.log(object);
-    object.traverse((child) => {
-        if (child.isMesh) {
-            child.material = material;
-        }
-        child.position.z = -2;
-        child.castShadow = true;
-        child.receiveShadow = true;
+const mtlLoader = new MTLLoader();
+mtlLoader.load('models/monkey.mtl', (materials) => {
+    materials.preload();
+    const objLoader = new OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.load('models/monkey.obj', (object) => {
+        scene.add(object);
+    }, (xhr) => {
+        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+    }, (error) => {
+        console.log('An error happend');
     });
-    scene.add(object);
 }, (xhr) => {
-    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+    console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
 }, (error) => {
-    console.log(error);
+    console.log('An error happend');
 });
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
