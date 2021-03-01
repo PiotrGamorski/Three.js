@@ -16,6 +16,9 @@ class App {
         app.use('/jsm/controls/OrbitControls', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/controls/OrbitControls.js')))
         app.use('/jsm/loaders/OBJLoader', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/loaders/OBJLoader.js')))
         app.use('/jsm/loaders/MTLLoader', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/loaders/MTLLoader.js')))
+        app.use('/jsm/loaders/GLTFLoader', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/loaders/GLTFLoader.js')))
+        app.use('/jsm/loaders/DRACOLoader', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/loaders/DRACOLoader.js')))
+        app.use('/js/libs/draco/', express.static(path.join(__dirname, '../../node_modules/three/examples/js/libs/draco/')))
         app.use('/jsm/libs/stats.module', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/libs/stats.module.js')))
 
         this.server = new http.Server(app);
