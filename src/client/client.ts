@@ -23,10 +23,15 @@ const controls = new OrbitControls(camera, renderer.domElement)
 controls.screenSpacePanning = true
 controls.target.set(0, 1, 0)
 
+type AnimationObj {
+    name: string;
+    action: THREE.AnimationAction;
+}
+
 let mixer: THREE.AnimationMixer
 let model: THREE.Object3D
 let modelReady: boolean = false
-let animationActions: THREE.AnimationAction[] = []
+let animationActions: AnimationObj[] = []
 let activeAction: THREE.AnimationAction
 let lastAction: THREE.AnimationAction
 const fbxLoader: FBXLoader = new FBXLoader();
@@ -44,9 +49,9 @@ fbxLoader.load(
         object.scale.set(.01, .01, .01)
         mixer = new THREE.AnimationMixer(object)
         let animationAction: THREE.AnimationAction = mixer.clipAction(object.animations[0])
-        animationActions.push(animationAction)
+        animationActions.push({name: "default",action: animationAction});
         animationsFolder.add(vanguardAnimations, 'default')
-        activeAction = animationActions[0]
+        activeAction = animationActions[0].action;
 
         scene.add(object);
         
@@ -55,7 +60,7 @@ fbxLoader.load(
             (object) => {
                 console.log("loaded samba")
                 let animationAction: THREE.AnimationAction = mixer.clipAction(object.animations[0])
-                animationActions.push(animationAction)
+                animationActions.push({name: "samba",action: animationAction});
                 animationsFolder.add(vanguardAnimations, 'samba')
             }, 
             null,
@@ -69,7 +74,7 @@ fbxLoader.load(
             (object) => {
                 console.log("loaded bellydance")
                 let animationAction: THREE.AnimationAction = mixer.clipAction(object.animations[0])
-                animationActions.push(animationAction)
+                animationActions.push({name: "bellydance",action: animationAction});
                 animationsFolder.add(vanguardAnimations, 'bellydance')
             }, 
             null,
@@ -84,9 +89,8 @@ fbxLoader.load(
                 console.log("loaded goofyrunning")
                 object.animations[0].tracks.shift()
                 let animationAction = mixer.clipAction(object.animations[0])
-                animationActions.push(animationAction)
+                animationActions.push({name: "goofyrunning",action: animationAction});
                 animationsFolder.add(vanguardAnimations, 'goofyrunning')
-                console.dir(animationAction)
             }, 
             null,
             (error) =>{
@@ -115,18 +119,22 @@ function onWindowResize() {
 const stats = Stats()
 document.body.appendChild(stats.dom)
 
-var vanguardAnimations = {
+const vanguardAnimations = {
     default: function () {
-        setAction(animationActions[0])
+        const index = animationActions.findIndex((x) => x.name === "default")
+        setAction(animationActions[index].action)
     },
     samba: function () {
-        setAction(animationActions[1])
+        const index = animationActions.findIndex((x) => x.name === "samba")
+        setAction(animationActions[index].action)
     },
     bellydance: function () {
-        setAction(animationActions[2])
+        const index = animationActions.findIndex((x) => x.name === "bellydance")
+        setAction(animationActions[index].action)
     },
     goofyrunning: function () {
-        setAction(animationActions[3])
+        const index = animationActions.findIndex((x) => x.name === "goofyrunning")
+        setAction(animationActions[index].action)
     },
 }
 
@@ -134,8 +142,9 @@ const setAction = (actionToExecute: THREE.AnimationAction) => {
     if(actionToExecute != activeAction) {
         lastAction = activeAction
         activeAction = actionToExecute
-        lastAction.stop()
+        lastAction.fadeOut(.5)
         activeAction.reset()
+        activeAction.fadeIn(.5)
         activeAction.play()
     }
 }

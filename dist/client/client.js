@@ -35,14 +35,14 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     object.scale.set(.01, .01, .01);
     mixer = new THREE.AnimationMixer(object);
     let animationAction = mixer.clipAction(object.animations[0]);
-    animationActions.push(animationAction);
+    animationActions.push({ name: "default", action: animationAction });
     animationsFolder.add(vanguardAnimations, 'default');
-    activeAction = animationActions[0];
+    activeAction = animationActions[0].action;
     scene.add(object);
     fbxLoader.load('models/vanguard@samba.fbx', (object) => {
         console.log("loaded samba");
         let animationAction = mixer.clipAction(object.animations[0]);
-        animationActions.push(animationAction);
+        animationActions.push({ name: "samba", action: animationAction });
         animationsFolder.add(vanguardAnimations, 'samba');
     }, null, (error) => {
         console.log(error);
@@ -50,7 +50,7 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     fbxLoader.load('models/vanguard@bellydance.fbx', (object) => {
         console.log("loaded bellydance");
         let animationAction = mixer.clipAction(object.animations[0]);
-        animationActions.push(animationAction);
+        animationActions.push({ name: "bellydance", action: animationAction });
         animationsFolder.add(vanguardAnimations, 'bellydance');
     }, null, (error) => {
         console.log(error);
@@ -59,9 +59,8 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
         console.log("loaded goofyrunning");
         object.animations[0].tracks.shift();
         let animationAction = mixer.clipAction(object.animations[0]);
-        animationActions.push(animationAction);
+        animationActions.push({ name: "goofyrunning", action: animationAction });
         animationsFolder.add(vanguardAnimations, 'goofyrunning');
-        console.dir(animationAction);
     }, null, (error) => {
         console.log(error);
     });
@@ -80,26 +79,31 @@ function onWindowResize() {
 }
 const stats = Stats();
 document.body.appendChild(stats.dom);
-var vanguardAnimations = {
+const vanguardAnimations = {
     default: function () {
-        setAction(animationActions[0]);
+        const index = animationActions.findIndex((x) => x.name === "default");
+        setAction(animationActions[index].action);
     },
     samba: function () {
-        setAction(animationActions[1]);
+        const index = animationActions.findIndex((x) => x.name === "samba");
+        setAction(animationActions[index].action);
     },
     bellydance: function () {
-        setAction(animationActions[2]);
+        const index = animationActions.findIndex((x) => x.name === "bellydance");
+        setAction(animationActions[index].action);
     },
     goofyrunning: function () {
-        setAction(animationActions[3]);
+        const index = animationActions.findIndex((x) => x.name === "goofyrunning");
+        setAction(animationActions[index].action);
     },
 };
 const setAction = (actionToExecute) => {
     if (actionToExecute != activeAction) {
         lastAction = activeAction;
         activeAction = actionToExecute;
-        lastAction.stop();
+        lastAction.fadeOut(.5);
         activeAction.reset();
+        activeAction.fadeIn(.5);
         activeAction.play();
     }
 };
