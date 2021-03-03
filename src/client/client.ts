@@ -1,6 +1,7 @@
 import * as THREE from '/build/three.module.js'
 import { OrbitControls } from '/jsm/controls/OrbitControls'
 import { FBXLoader } from '/jsm/loaders/FBXLoader'
+import { GLTFLoader } from '/jsm/loaders/GLTFLoader'
 import Stats from '/jsm/libs/stats.module'
 import { GUI } from '/jsm/libs/dat.gui.module'
  
@@ -8,9 +9,18 @@ const scene: THREE.Scene = new THREE.Scene()
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
-var light = new THREE.PointLight();
+let light = new THREE.PointLight();
 light.position.set(2.5, 7.5, 15)
+light.castShadow
 scene.add(light);
+
+// const textureLoader = new THREE.CubeTextureLoader()
+// const texture = textureLoader.load(['nx_eso0932a.jpg', 'px_eso0932a.jpg', 'ny_eso0932a.jpg', 'py_eso0932a.jpg', 'nz_eso0932a.jpg', 'pz_eso0932a.jpg'])
+// const cubeMaterial = new THREE.MeshBasicMaterial({map: texture})
+// const cubeGeometry = new THREE.BoxGeometry(20, 20, 20)
+// const cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
+//scene.add(cube)
+
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.set(0.8, 1.4, 1.0)
@@ -23,17 +33,21 @@ const controls = new OrbitControls(camera, renderer.domElement)
 controls.screenSpacePanning = true
 controls.target.set(0, 1, 0)
 
-type AnimationObj {
+type MixerObj = {
+    name: string
+    mixer: THREE.AnimationMixer
+}
+
+type AnimationObj = {
     name: string;
     action: THREE.AnimationAction;
 }
-
-let mixer: THREE.AnimationMixer
-let model: THREE.Object3D
-let modelReady: boolean = false
+let mixers: MixerObj[] = []
+let vanguardModelReady: boolean = false
 let animationActions: AnimationObj[] = []
-let activeAction: THREE.AnimationAction
-let lastAction: THREE.AnimationAction
+let vanguardActiveAction: THREE.AnimationAction
+let vanguardLastAction: THREE.AnimationAction
+let vanguardMixerIndex: number
 const fbxLoader: FBXLoader = new FBXLoader();
 
 fbxLoader.load(
@@ -47,11 +61,14 @@ fbxLoader.load(
             }
         })
         object.scale.set(.01, .01, .01)
-        mixer = new THREE.AnimationMixer(object)
-        let animationAction: THREE.AnimationAction = mixer.clipAction(object.animations[0])
-        animationActions.push({name: "default",action: animationAction});
-        animationsFolder.add(vanguardAnimations, 'default')
-        activeAction = animationActions[0].action;
+        object.castShadow = true
+        object.receiveShadow = true
+        mixers.push({name: "vanguardMixer", mixer: new THREE.AnimationMixer(object)})
+        vanguardMixerIndex = mixers.findIndex((x) => x.name === "vanguardMixer")
+        let animationAction: THREE.AnimationAction = mixers[vanguardMixerIndex].mixer.clipAction(object.animations[0])
+        animationActions.push({name: "default", action: animationAction});
+        vanguardFolder.add(vanguardAnimations, 'default')
+        vanguardActiveAction = animationActions[0].action;
 
         scene.add(object);
         
@@ -59,9 +76,9 @@ fbxLoader.load(
             'models/vanguard@samba.fbx',
             (object) => {
                 console.log("loaded samba")
-                let animationAction: THREE.AnimationAction = mixer.clipAction(object.animations[0])
-                animationActions.push({name: "samba",action: animationAction});
-                animationsFolder.add(vanguardAnimations, 'samba')
+                let animationAction: THREE.AnimationAction = mixers[vanguardMixerIndex].mixer.clipAction(object.animations[0])
+                animationActions.push({name: "samba", action: animationAction});
+                vanguardFolder.add(vanguardAnimations, 'samba')
             }, 
             null,
             (error) =>{
@@ -73,9 +90,9 @@ fbxLoader.load(
             'models/vanguard@bellydance.fbx',
             (object) => {
                 console.log("loaded bellydance")
-                let animationAction: THREE.AnimationAction = mixer.clipAction(object.animations[0])
-                animationActions.push({name: "bellydance",action: animationAction});
-                animationsFolder.add(vanguardAnimations, 'bellydance')
+                let animationAction: THREE.AnimationAction = mixers[vanguardMixerIndex].mixer.clipAction(object.animations[0])
+                animationActions.push({name: "bellydance", action: animationAction});
+                vanguardFolder.add(vanguardAnimations, 'bellydance')
             }, 
             null,
             (error) =>{
@@ -88,9 +105,9 @@ fbxLoader.load(
             (object) => {
                 console.log("loaded goofyrunning")
                 object.animations[0].tracks.shift()
-                let animationAction = mixer.clipAction(object.animations[0])
-                animationActions.push({name: "goofyrunning",action: animationAction});
-                animationsFolder.add(vanguardAnimations, 'goofyrunning')
+                let animationAction = mixers[vanguardMixerIndex].mixer.clipAction(object.animations[0])
+                animationActions.push({name: "goofyrunning", action: animationAction});
+                vanguardFolder.add(vanguardAnimations, 'goofyrunning')
             }, 
             null,
             (error) =>{
@@ -98,7 +115,62 @@ fbxLoader.load(
             }
         )
 
-        modelReady = true
+        vanguardModelReady = true
+    },
+    (xhr) => {
+        console.log(Math.ceil((xhr.loaded / xhr.total * 100) ) + '% loaded')
+    },
+    (error) => {
+        console.log(error);
+    }
+)
+
+const gltfLoader: GLTFLoader = new GLTFLoader()
+let swatModelReady: boolean = false
+let swatLastAction: THREE.AnimationAction
+let swatActiveAction: THREE.AnimationAction
+let swatguyMixerIndex: number
+
+gltfLoader.load(
+    'models/swatguy.glb',
+    (gltf) => {
+        gltf.scene.traverse((child) =>{
+            if((<THREE.Mesh>child).isMesh) {
+                ((<THREE.Mesh>child).material as THREE.MeshBasicMaterial).transparent = false 
+            }
+        })
+        gltf.scene.position.x = -1.5
+        gltf.scene.rotateY(Math.PI/3)
+        gltf.scene.receiveShadow = true
+        gltf.scene.castShadow = true
+        mixers.push({name: 'swatguyMixer', mixer: new THREE.AnimationMixer(gltf.scene)})
+        swatguyMixerIndex = mixers.findIndex((x) => x.name === 'swatguyMixer')
+
+        gltfLoader.load(
+            'models/swatguy@idle.glb',
+            (gltf) =>{
+                console.log('loaded idle')
+                let animationAction = mixers[swatguyMixerIndex].mixer.clipAction(gltf.animations[0])
+                animationActions.push({name: 'idle', action: animationAction})
+                const index = animationActions.findIndex((x) => x.name === 'idle')
+                swatActiveAction = animationActions[index].action
+                swatguyFolder.add(swatguyAnimations, 'idle')
+                swatActiveAction.play()
+            }
+        )
+        scene.add(gltf.scene)
+
+        gltfLoader.load(
+            'models/swatguy@flair.glb',
+            (gltf) => {
+                console.log('loaded flair')
+                let animationAction = mixers[swatguyMixerIndex].mixer.clipAction(gltf.animations[0])
+                animationActions.push({name: 'flair', action: animationAction})
+                swatguyFolder.add(swatguyAnimations, 'flair')
+            }
+        )
+
+        swatModelReady = true
     },
     (xhr) => {
         console.log(Math.ceil((xhr.loaded / xhr.total * 100) ) + '% loaded')
@@ -122,44 +194,70 @@ document.body.appendChild(stats.dom)
 const vanguardAnimations = {
     default: function () {
         const index = animationActions.findIndex((x) => x.name === "default")
-        setAction(animationActions[index].action)
+        setVanguardAction(animationActions[index].action)
     },
     samba: function () {
         const index = animationActions.findIndex((x) => x.name === "samba")
-        setAction(animationActions[index].action)
+        setVanguardAction(animationActions[index].action)
     },
     bellydance: function () {
         const index = animationActions.findIndex((x) => x.name === "bellydance")
-        setAction(animationActions[index].action)
+        setVanguardAction(animationActions[index].action)
     },
     goofyrunning: function () {
         const index = animationActions.findIndex((x) => x.name === "goofyrunning")
-        setAction(animationActions[index].action)
+        setVanguardAction(animationActions[index].action)
     },
 }
 
-const setAction = (actionToExecute: THREE.AnimationAction) => {
-    if(actionToExecute != activeAction) {
-        lastAction = activeAction
-        activeAction = actionToExecute
-        lastAction.fadeOut(.5)
-        activeAction.reset()
-        activeAction.fadeIn(.5)
-        activeAction.play()
+const swatguyAnimations = {
+    idle: function () {
+        const index = animationActions.findIndex((x) => x.name === "idle")
+        setSwatguyAction(animationActions[index].action)
+    },
+    flair: function () {
+        const index = animationActions.findIndex((x) => x.name === 'flair')
+        setSwatguyAction(animationActions[index].action)
+    }
+}
+
+const setVanguardAction = (actionToExecute: THREE.AnimationAction) => {
+    if(actionToExecute != vanguardActiveAction) {
+        vanguardLastAction = vanguardActiveAction
+        vanguardActiveAction = actionToExecute
+        vanguardLastAction.fadeOut(.5)
+        vanguardActiveAction.reset()
+        vanguardActiveAction.fadeIn(.5)
+        vanguardActiveAction.play()
+    }
+}
+
+const setSwatguyAction = (actionToExecute: THREE.AnimationAction) => {
+    if(actionToExecute != swatActiveAction) {
+        swatLastAction = swatActiveAction
+        swatActiveAction = actionToExecute
+        swatLastAction.fadeOut(.5)
+        swatActiveAction.reset()
+        swatActiveAction.fadeIn(.5)
+        swatActiveAction.play()
     }
 }
 
 const gui = new GUI()
 const animationsFolder = gui.addFolder("Animations")
+const vanguardFolder = animationsFolder.addFolder("Vanguard")
+const swatguyFolder = animationsFolder.addFolder("Swat")
 animationsFolder.open()
 
-const clock: THREE.Clock = new THREE.Clock()
+const vanguardClock: THREE.Clock = new THREE.Clock()
+const swatguyClock: THREE.Clock = new THREE.Clock()
 
 var animate = function () {
     requestAnimationFrame(animate)
 
     controls.update()
-    if(modelReady) mixer.update(clock.getDelta())
+    if(vanguardModelReady) mixers[vanguardMixerIndex].mixer.update(vanguardClock.getDelta())
+    if(swatModelReady) mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta())
     render()
     stats.update()
 };
