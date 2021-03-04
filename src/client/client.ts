@@ -1,5 +1,6 @@
 import * as THREE from '/build/three.module.js'
 import { OrbitControls } from '/jsm/controls/OrbitControls'
+import { DragControls } from '/jsm/controls/DragControls'
 import { FBXLoader } from '/jsm/loaders/FBXLoader'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader'
 import Stats from '/jsm/libs/stats.module'
@@ -9,29 +10,67 @@ const scene: THREE.Scene = new THREE.Scene()
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
-let light = new THREE.PointLight();
-light.position.set(2.5, 7.5, 15)
-light.castShadow
-scene.add(light);
+var light1 = new THREE.PointLight();
+light1.position.set(2.5, 2.5, 2.5)
+light1.castShadow = true
+scene.add(light1);
 
-// const textureLoader = new THREE.CubeTextureLoader()
-// const texture = textureLoader.load(['nx_eso0932a.jpg', 'px_eso0932a.jpg', 'ny_eso0932a.jpg', 'py_eso0932a.jpg', 'nz_eso0932a.jpg', 'pz_eso0932a.jpg'])
-// const cubeMaterial = new THREE.MeshBasicMaterial({map: texture})
-// const cubeGeometry = new THREE.BoxGeometry(20, 20, 20)
-// const cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
-//scene.add(cube)
-
+var light2 = new THREE.PointLight();
+light2.position.set(-2.5, 2.5, 2.5)
+light2.castShadow = true
+scene.add(light2);
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.set(0.8, 1.4, 1.0)
 
 const renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.shadowMap.enabled = true
 document.body.appendChild(renderer.domElement)
 
-const controls = new OrbitControls(camera, renderer.domElement)
-controls.screenSpacePanning = true
-controls.target.set(0, 1, 0)
+const orbitControls = new OrbitControls(camera, renderer.domElement)
+orbitControls.screenSpacePanning = true
+orbitControls.target.set(0, 1, 0)
+
+const sceneMeshes: THREE.Mesh[] = new Array()
+let boxHelper: THREE.BoxHelper
+const dragControls = new DragControls(sceneMeshes, camera, renderer.domElement)
+
+dragControls.addEventListener('hoveron', (event) => {
+    boxHelper.visible = true
+    orbitControls.enabled = false
+})
+dragControls.addEventListener('hoveroff', (event) => {
+    boxHelper.visible = false
+    orbitControls.enabled = true
+})
+dragControls.addEventListener('dragstart', (event) =>{
+    boxHelper.visible = true
+    orbitControls.enabled = false
+})
+dragControls.addEventListener('dragend', (event) => {
+    boxHelper.visible = false
+    orbitControls.enabled = true
+})
+
+const textures = new Array()
+const loader = new THREE.CubeTextureLoader();
+    textures[0] = loader.load([
+        'img/px_eso0932a.jpg',
+        'img/nx_eso0932a.jpg',
+        'img/py_eso0932a.jpg',
+        'img/ny_eso0932a.jpg',
+        'img/pz_eso0932a.jpg',
+        'img/nz_eso0932a.jpg',
+    ]);
+scene.background = textures[0]
+
+const planeGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry(25, 25) 
+textures[1] = new THREE.TextureLoader().load('img/grid.png')
+const plane: THREE.Mesh = new THREE.Mesh(planeGeometry, new THREE.MeshPhongMaterial({map: textures[1]}))
+plane.rotateX(-Math.PI/2)
+plane.receiveShadow = true
+scene.add(plane)
 
 type MixerObj = {
     name: string
@@ -48,6 +87,8 @@ let animationActions: AnimationObj[] = []
 let vanguardActiveAction: THREE.AnimationAction
 let vanguardLastAction: THREE.AnimationAction
 let vanguardMixerIndex: number
+let vanguardModel: THREE.Group
+let vanguardDragBox: THREE.Mesh
 const fbxLoader: FBXLoader = new FBXLoader();
 
 fbxLoader.load(
@@ -55,14 +96,13 @@ fbxLoader.load(
      (object) => {
         object.traverse(function (child) {
             if ((child as THREE.Mesh).isMesh) {
-                if ((<THREE.Mesh>child).material) {
-                    ((<THREE.Mesh>child).material as THREE.MeshBasicMaterial).transparent = false
-                }
+                child.castShadow = true;
+                child.receiveShadow = true;
+                child.frustumCulled = false;
+                ((<THREE.Mesh>child).material as THREE.MeshBasicMaterial).transparent = false;
             }
         })
         object.scale.set(.01, .01, .01)
-        object.castShadow = true
-        object.receiveShadow = true
         mixers.push({name: "vanguardMixer", mixer: new THREE.AnimationMixer(object)})
         vanguardMixerIndex = mixers.findIndex((x) => x.name === "vanguardMixer")
         let animationAction: THREE.AnimationAction = mixers[vanguardMixerIndex].mixer.clipAction(object.animations[0])
@@ -70,7 +110,18 @@ fbxLoader.load(
         vanguardFolder.add(vanguardAnimations, 'default')
         vanguardActiveAction = animationActions[0].action;
 
-        scene.add(object);
+        vanguardModel = object
+        scene.add(vanguardModel)
+
+        vanguardDragBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, .5), new THREE.MeshBasicMaterial({transparent: true, opacity: 0}))
+        vanguardDragBox.geometry.translate(0, 0.9, 0)
+        sceneMeshes.push(vanguardDragBox)
+
+        boxHelper = new THREE.BoxHelper(vanguardDragBox, 0xffff00)
+        boxHelper.visible = false
+
+        scene.add(vanguardDragBox)
+        scene.add(boxHelper)
         
         fbxLoader.load(
             'models/vanguard@samba.fbx',
@@ -136,6 +187,8 @@ gltfLoader.load(
     (gltf) => {
         gltf.scene.traverse((child) =>{
             if((<THREE.Mesh>child).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
                 ((<THREE.Mesh>child).material as THREE.MeshBasicMaterial).transparent = false 
             }
         })
@@ -255,8 +308,12 @@ const swatguyClock: THREE.Clock = new THREE.Clock()
 var animate = function () {
     requestAnimationFrame(animate)
 
-    controls.update()
-    if(vanguardModelReady) mixers[vanguardMixerIndex].mixer.update(vanguardClock.getDelta())
+    orbitControls.update()
+    if(vanguardModelReady) {
+        mixers[vanguardMixerIndex].mixer.update(vanguardClock.getDelta())
+        vanguardModel.position.copy(vanguardDragBox.position)
+        boxHelper.update()
+    }
     if(swatModelReady) mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta())
     render()
     stats.update()
