@@ -28,19 +28,19 @@ orbitControls.target.set(0, 1, 0);
 const sceneMeshes = new Array();
 let boxHelper;
 const dragControls = new DragControls(sceneMeshes, camera, renderer.domElement);
-dragControls.addEventListener('hoveron', (event) => {
+dragControls.addEventListener('hoveron', () => {
     boxHelper.visible = true;
     orbitControls.enabled = false;
 });
-dragControls.addEventListener('hoveroff', (event) => {
+dragControls.addEventListener('hoveroff', () => {
     boxHelper.visible = false;
     orbitControls.enabled = true;
 });
-dragControls.addEventListener('dragstart', (event) => {
+dragControls.addEventListener('dragstart', () => {
     boxHelper.visible = true;
     orbitControls.enabled = false;
 });
-dragControls.addEventListener('dragend', (event) => {
+dragControls.addEventListener('dragend', () => {
     boxHelper.visible = false;
     orbitControls.enabled = true;
 });
@@ -87,6 +87,7 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     vanguardFolder.add(vanguardAnimations, 'default');
     vanguardActiveAction = animationActions[0].action;
     vanguardModel = object;
+    object.remove;
     scene.add(vanguardModel);
     vanguardDragBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, .5), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
     vanguardDragBox.geometry.translate(0, 0.9, 0);
@@ -126,6 +127,7 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
 }, (error) => {
     console.log(error);
 });
+const raycaster = new THREE.Raycaster();
 const gltfLoader = new GLTFLoader();
 let swatModelReady = false;
 let swatLastAction;
@@ -173,6 +175,15 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     render();
+}
+renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+function onMouseMove(event) {
+    const mouseCoordinatesNormalized = {
+        x: (event.clientX / window.innerWidth) * 2 - 1,
+        y: -(event.clientY / window.innerHeight) * 2 + 1,
+    };
+    raycaster.setFromCamera(mouseCoordinatesNormalized, camera);
+    const intersects = raycaster.intersectObjects(sceneMeshes, false);
 }
 const stats = Stats();
 document.body.appendChild(stats.dom);
