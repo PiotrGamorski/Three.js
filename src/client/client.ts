@@ -96,10 +96,12 @@ fbxLoader.load(
      (object) => {
         object.traverse(function (child) {
             if ((child as THREE.Mesh).isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-                child.frustumCulled = false;
-                ((<THREE.Mesh>child).material as THREE.MeshBasicMaterial).transparent = false;
+                let mesh = <THREE.Mesh>child
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.frustumCulled = false;
+                (mesh.material as THREE.MeshBasicMaterial).transparent = false;
+                objectsToRaycast.push(mesh)
             }
         })
         object.scale.set(.01, .01, .01)
@@ -178,6 +180,7 @@ fbxLoader.load(
 )
 
 const raycaster: THREE.Raycaster = new THREE.Raycaster()
+const objectsToRaycast = []
 
 const gltfLoader: GLTFLoader = new GLTFLoader()
 let swatModelReady: boolean = false
@@ -190,9 +193,11 @@ gltfLoader.load(
     (gltf) => {
         gltf.scene.traverse((child) =>{
             if((<THREE.Mesh>child).isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-                ((<THREE.Mesh>child).material as THREE.MeshBasicMaterial).transparent = false 
+                let mesh = <THREE.Mesh>child
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                (mesh.material as THREE.MeshBasicMaterial).transparent = false
+                objectsToRaycast.push(mesh) 
             }
         })
         gltf.scene.position.x = -1.5
@@ -215,6 +220,7 @@ gltfLoader.load(
             }
         )
         scene.add(gltf.scene)
+        //objectsToRaycast.push(gltf.scene)
 
         gltfLoader.load(
             'models/swatguy@flair.glb',
@@ -236,6 +242,16 @@ gltfLoader.load(
     }
 )
 
+const lineMaterial: THREE.LineBasicMaterial = new THREE.LineBasicMaterial({color: 0xff0000})
+const points = []
+points.push(new THREE.Vector3(0, 0, 0))
+points.push(new THREE.Vector3(0, 0, 0.25))
+const lineGeometry: THREE.BufferGeometry = new THREE.BufferGeometry()
+lineGeometry.setFromPoints(points)
+const line: THREE.Mesh = new THREE.Mesh(lineGeometry, lineMaterial)
+scene.add(line)
+
+
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight
@@ -251,7 +267,14 @@ function onMouseMove(event: MouseEvent) {
         y: -(event.clientY / window.innerHeight) * 2 + 1,
     }
     raycaster.setFromCamera(mouseCoordinatesNormalized, camera)
-    const intersects = raycaster.intersectObjects(sceneMeshes, false)
+    const intersects = raycaster.intersectObjects(objectsToRaycast, false)
+
+    if(intersects.length > 0) {
+        console.log(intersects[0])
+        line.position.set(0, 0, 0)
+        line.lookAt(intersects[0].face.normal)
+        line.position.copy(intersects[0].point)
+    }
 }
 
 const stats = Stats()

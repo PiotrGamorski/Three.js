@@ -73,10 +73,12 @@ const fbxLoader = new FBXLoader();
 fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     object.traverse(function (child) {
         if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            child.frustumCulled = false;
-            child.material.transparent = false;
+            let mesh = child;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.frustumCulled = false;
+            mesh.material.transparent = false;
+            objectsToRaycast.push(mesh);
         }
     });
     object.scale.set(.01, .01, .01);
@@ -128,6 +130,7 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     console.log(error);
 });
 const raycaster = new THREE.Raycaster();
+const objectsToRaycast = [];
 const gltfLoader = new GLTFLoader();
 let swatModelReady = false;
 let swatLastAction;
@@ -136,9 +139,11 @@ let swatguyMixerIndex;
 gltfLoader.load('models/swatguy.glb', (gltf) => {
     gltf.scene.traverse((child) => {
         if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            child.material.transparent = false;
+            let mesh = child;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.material.transparent = false;
+            objectsToRaycast.push(mesh);
         }
     });
     gltf.scene.position.x = -1.5;
@@ -157,6 +162,7 @@ gltfLoader.load('models/swatguy.glb', (gltf) => {
         swatActiveAction.play();
     });
     scene.add(gltf.scene);
+    //objectsToRaycast.push(gltf.scene)
     gltfLoader.load('models/swatguy@flair.glb', (gltf) => {
         console.log('loaded flair');
         let animationAction = mixers[swatguyMixerIndex].mixer.clipAction(gltf.animations[0]);
@@ -169,6 +175,14 @@ gltfLoader.load('models/swatguy.glb', (gltf) => {
 }, (error) => {
     console.log(error);
 });
+const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+const points = [];
+points.push(new THREE.Vector3(0, 0, 0));
+points.push(new THREE.Vector3(0, 0, 0.25));
+const lineGeometry = new THREE.BufferGeometry();
+lineGeometry.setFromPoints(points);
+const line = new THREE.Mesh(lineGeometry, lineMaterial);
+scene.add(line);
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -183,7 +197,13 @@ function onMouseMove(event) {
         y: -(event.clientY / window.innerHeight) * 2 + 1,
     };
     raycaster.setFromCamera(mouseCoordinatesNormalized, camera);
-    const intersects = raycaster.intersectObjects(sceneMeshes, false);
+    const intersects = raycaster.intersectObjects(objectsToRaycast, false);
+    if (intersects.length > 0) {
+        console.log(intersects[0]);
+        line.position.set(0, 0, 0);
+        line.lookAt(intersects[0].face.normal);
+        line.position.copy(intersects[0].point);
+    }
 }
 const stats = Stats();
 document.body.appendChild(stats.dom);
