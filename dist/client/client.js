@@ -5,6 +5,7 @@ import { FBXLoader } from '/jsm/loaders/FBXLoader';
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
 import Stats from '/jsm/libs/stats.module';
 import { GUI } from '/jsm/libs/dat.gui.module';
+import { MeshNormalMaterial } from '/build/three.module.js';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
@@ -136,6 +137,10 @@ let swatModelReady = false;
 let swatLastAction;
 let swatActiveAction;
 let swatguyMixerIndex;
+let lockerModelReady = false;
+let lockerLastAction;
+let lockerActiveAction;
+let lockerMixerIndex;
 gltfLoader.load('models/swatguy.glb', (gltf) => {
     gltf.scene.traverse((child) => {
         if (child.isMesh) {
@@ -175,6 +180,33 @@ gltfLoader.load('models/swatguy.glb', (gltf) => {
 }, (error) => {
     console.log(error);
 });
+gltfLoader.load('models/Locker_Anim.glb', (gltf) => {
+    console.log('loaded locker');
+    gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+            let mesh = child;
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+            mesh.material.transparent = false;
+        }
+        if (child.isLight) {
+            let light = child;
+            light.castShadow = true;
+            light.shadow.bias = -.003;
+        }
+    });
+    gltf.scene.position.set(-2, 0, 1.5);
+    mixers.push({ name: 'lockerMixer', mixer: new THREE.AnimationMixer(gltf.scene) });
+    lockerMixerIndex = mixers.findIndex((x) => x.name === 'lockerMixer');
+    let animationAction = mixers[lockerMixerIndex].mixer.clipAction(gltf.animations[0]);
+    animationActions.push({ name: 'lockerAnim', action: animationAction });
+    const index = animationActions.findIndex((x) => { x.name === 'lockerAnim'; });
+    // lockerActiveAction = animationActions[index].action
+    // lockerActiveAction.play()
+    console.log(gltf.scene);
+    lockerModelReady = true;
+    scene.add(gltf.scene);
+});
 const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
 const points = [];
 points.push(new THREE.Vector3(0, 0, 0));
@@ -183,6 +215,8 @@ const lineGeometry = new THREE.BufferGeometry();
 lineGeometry.setFromPoints(points);
 const line = new THREE.Mesh(lineGeometry, lineMaterial);
 scene.add(line);
+const cubeGeometry = new THREE.BoxGeometry(.2, .2, .2);
+const cubeMaterial = new MeshNormalMaterial();
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -199,10 +233,17 @@ function onMouseMove(event) {
     raycaster.setFromCamera(mouseCoordinatesNormalized, camera);
     const intersects = raycaster.intersectObjects(objectsToRaycast, false);
     if (intersects.length > 0) {
-        console.log(intersects[0]);
-        line.position.set(0, 0, 0);
-        line.lookAt(intersects[0].face.normal);
-        line.position.copy(intersects[0].point);
+        // line.position.set(0, 0, 0)
+        // line.lookAt(intersects[0].face.normal)
+        // line.position.copy(intersects[0].point)
+        // let normalVector: THREE.Vector3 = new Vector3()
+        // normalVector.copy(intersects[0].face.normal)
+        // normalVector.transformDirection(intersects[0].object.matrixWorld)
+        // const cube: THREE.Mesh = new THREE.Mesh(cubeGeometry, cubeMaterial)
+        // cube.lookAt(normalVector)
+        // cube.rotateX(Math.PI / 2)
+        // cube.position.copy(intersects[0].point);
+        // scene.add(cube)
     }
 }
 const stats = Stats();
@@ -262,6 +303,7 @@ const swatguyFolder = animationsFolder.addFolder("Swat");
 animationsFolder.open();
 const vanguardClock = new THREE.Clock();
 const swatguyClock = new THREE.Clock();
+const lockerClock = new THREE.Clock();
 var animate = function () {
     requestAnimationFrame(animate);
     orbitControls.update();
@@ -272,6 +314,8 @@ var animate = function () {
     }
     if (swatModelReady)
         mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta());
+    if (lockerModelReady)
+        mixers[lockerMixerIndex].mixer.update(lockerClock.getDelta());
     render();
     stats.update();
 };

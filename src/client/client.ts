@@ -5,6 +5,7 @@ import { FBXLoader } from '/jsm/loaders/FBXLoader'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader'
 import Stats from '/jsm/libs/stats.module'
 import { GUI } from '/jsm/libs/dat.gui.module'
+import { MeshNormalMaterial, Vector3 } from '/build/three.module.js'
  
 const scene: THREE.Scene = new THREE.Scene()
 const axesHelper = new THREE.AxesHelper(5)
@@ -188,6 +189,11 @@ let swatLastAction: THREE.AnimationAction
 let swatActiveAction: THREE.AnimationAction
 let swatguyMixerIndex: number
 
+let lockerModelReady: boolean = false
+let lockerLastAction: THREE.AnimationAction
+let lockerActiveAction: THREE.AnimationAction
+let lockerMixerIndex: number
+
 gltfLoader.load(
     'models/swatguy.glb',
     (gltf) => {
@@ -242,6 +248,38 @@ gltfLoader.load(
     }
 )
 
+gltfLoader.load(
+    'models/Locker_Anim.glb',
+    (gltf) => {
+        console.log('loaded locker')
+        gltf.scene.traverse((child) =>{
+            if((<THREE.Mesh>child).isMesh) {
+                let mesh = <THREE.Mesh>child;
+                mesh.receiveShadow = true;
+                mesh.castShadow = true;
+                (mesh.material as THREE.MeshBasicMaterial).transparent = false
+            }
+            if((<THREE.Light>child).isLight) {
+                let light = <THREE.Light>child
+                light.castShadow = true
+                light.shadow.bias = -.003
+            }
+        })
+        gltf.scene.position.set(-2, 0, 1.5)
+        mixers.push({name: 'lockerMixer', mixer: new THREE.AnimationMixer(gltf.scene)})
+        lockerMixerIndex = mixers.findIndex((x) => x.name === 'lockerMixer')
+        let animationAction = mixers[lockerMixerIndex].mixer.clipAction(gltf.animations[0])
+        animationActions.push({name: 'lockerAnim', action: animationAction})
+        const index = animationActions.findIndex((x) => {x.name === 'lockerAnim'})
+        // lockerActiveAction = animationActions[index].action
+        // lockerActiveAction.play()
+        console.log(gltf.scene)
+
+        lockerModelReady = true
+        scene.add(gltf.scene)
+    }
+)
+
 const lineMaterial: THREE.LineBasicMaterial = new THREE.LineBasicMaterial({color: 0xff0000})
 const points = []
 points.push(new THREE.Vector3(0, 0, 0))
@@ -251,6 +289,8 @@ lineGeometry.setFromPoints(points)
 const line: THREE.Mesh = new THREE.Mesh(lineGeometry, lineMaterial)
 scene.add(line)
 
+const cubeGeometry: THREE.BoxGeometry = new THREE.BoxGeometry(.2, .2, .2)
+const cubeMaterial: THREE.Material = new MeshNormalMaterial()
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -270,10 +310,20 @@ function onMouseMove(event: MouseEvent) {
     const intersects = raycaster.intersectObjects(objectsToRaycast, false)
 
     if(intersects.length > 0) {
-        console.log(intersects[0])
-        line.position.set(0, 0, 0)
-        line.lookAt(intersects[0].face.normal)
-        line.position.copy(intersects[0].point)
+        // line.position.set(0, 0, 0)
+        // line.lookAt(intersects[0].face.normal)
+        // line.position.copy(intersects[0].point)
+
+        // let normalVector: THREE.Vector3 = new Vector3()
+        // normalVector.copy(intersects[0].face.normal)
+        // normalVector.transformDirection(intersects[0].object.matrixWorld)
+        
+        // const cube: THREE.Mesh = new THREE.Mesh(cubeGeometry, cubeMaterial)
+        // cube.lookAt(normalVector)
+        // cube.rotateX(Math.PI / 2)
+        // cube.position.copy(intersects[0].point);
+
+        // scene.add(cube)
     }
 }
 
@@ -340,6 +390,7 @@ animationsFolder.open()
 
 const vanguardClock: THREE.Clock = new THREE.Clock()
 const swatguyClock: THREE.Clock = new THREE.Clock()
+const lockerClock: THREE.Clock = new THREE.Clock()
 
 var animate = function () {
     requestAnimationFrame(animate)
@@ -351,6 +402,7 @@ var animate = function () {
         boxHelper.update()
     }
     if(swatModelReady) mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta())
+    if(lockerModelReady) mixers[lockerMixerIndex].mixer.update(lockerClock.getDelta())
     render()
     stats.update()
 };
