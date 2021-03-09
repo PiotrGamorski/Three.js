@@ -22,7 +22,8 @@ class App {
         app.use('/jsm/libs/stats.module', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/libs/stats.module.js')))
         app.use('/jsm/libs/dat.gui.module', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/libs/dat.gui.module.js')))
         app.use('/jsm/controls/DragControls', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/controls/DragControls.js')))
-        
+        app.use('/jsm/libs/tween.module.min', express.static(path.join(__dirname, '../../node_modules/three/examples/jsm/libs/tween.module.min.js')))
+
         this.server = new http.Server(app);
     }
 

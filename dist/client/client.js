@@ -5,7 +5,7 @@ import { FBXLoader } from '/jsm/loaders/FBXLoader';
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
 import Stats from '/jsm/libs/stats.module';
 import { GUI } from '/jsm/libs/dat.gui.module';
-import { MeshNormalMaterial } from '/build/three.module.js';
+import { TWEEN } from '/jsm/libs/tween.module.min';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
@@ -17,6 +17,10 @@ var light2 = new THREE.PointLight();
 light2.position.set(-2.5, 2.5, 2.5);
 light2.castShadow = true;
 scene.add(light2);
+const raycaster = new THREE.Raycaster();
+let intersects;
+const objectsToRaycast = new Array();
+let intersectedObject;
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0.8, 1.4, 1.0);
 const renderer = new THREE.WebGLRenderer();
@@ -61,16 +65,18 @@ textures[1] = new THREE.TextureLoader().load('img/grid.png');
 const plane = new THREE.Mesh(planeGeometry, new THREE.MeshPhongMaterial({ map: textures[1] }));
 plane.rotateX(-Math.PI / 2);
 plane.receiveShadow = true;
+plane.name = "plane";
 scene.add(plane);
+objectsToRaycast.push(plane);
+const fbxLoader = new FBXLoader();
 let mixers = [];
-let vanguardModelReady = false;
 let animationActions = [];
+let vanguardModelReady = false;
 let vanguardActiveAction;
 let vanguardLastAction;
 let vanguardMixerIndex;
 let vanguardModel;
 let vanguardDragBox;
-const fbxLoader = new FBXLoader();
 fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     object.traverse(function (child) {
         if (child.isMesh) {
@@ -89,9 +95,8 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
     animationActions.push({ name: "default", action: animationAction });
     vanguardFolder.add(vanguardAnimations, 'default');
     vanguardActiveAction = animationActions[0].action;
+    scene.add(object);
     vanguardModel = object;
-    object.remove;
-    scene.add(vanguardModel);
     vanguardDragBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, .5), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
     vanguardDragBox.geometry.translate(0, 0.9, 0);
     sceneMeshes.push(vanguardDragBox);
@@ -130,17 +135,31 @@ fbxLoader.load('models/vanguard_t_choonyung.fbx', (object) => {
 }, (error) => {
     console.log(error);
 });
-const raycaster = new THREE.Raycaster();
-const objectsToRaycast = [];
+let kachujinModel;
+let kachujinModelReady = false;
+fbxLoader.load('models/kachujin_g_rosales.fbx', (object) => {
+    object.traverse(function (child) {
+        if (child.isMesh) {
+            let mesh = child;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.frustumCulled = false;
+            mesh.material.transparent = false;
+            objectsToRaycast.push(mesh);
+        }
+    });
+    object.scale.set(.009, .009, .009);
+    object.position.set(1.5, 0, 0.5);
+    object.rotateY(-Math.PI / 5);
+    scene.add(object);
+    kachujinModel = object;
+    kachujinModelReady = true;
+});
 const gltfLoader = new GLTFLoader();
 let swatModelReady = false;
 let swatLastAction;
 let swatActiveAction;
 let swatguyMixerIndex;
-let lockerModelReady = false;
-let lockerLastAction;
-let lockerActiveAction;
-let lockerMixerIndex;
 gltfLoader.load('models/swatguy.glb', (gltf) => {
     gltf.scene.traverse((child) => {
         if (child.isMesh) {
@@ -167,7 +186,6 @@ gltfLoader.load('models/swatguy.glb', (gltf) => {
         swatActiveAction.play();
     });
     scene.add(gltf.scene);
-    //objectsToRaycast.push(gltf.scene)
     gltfLoader.load('models/swatguy@flair.glb', (gltf) => {
         console.log('loaded flair');
         let animationAction = mixers[swatguyMixerIndex].mixer.clipAction(gltf.animations[0]);
@@ -180,43 +198,8 @@ gltfLoader.load('models/swatguy.glb', (gltf) => {
 }, (error) => {
     console.log(error);
 });
-gltfLoader.load('models/Locker_Anim.glb', (gltf) => {
-    console.log('loaded locker');
-    gltf.scene.traverse((child) => {
-        if (child.isMesh) {
-            let mesh = child;
-            mesh.receiveShadow = true;
-            mesh.castShadow = true;
-            mesh.material.transparent = false;
-        }
-        if (child.isLight) {
-            let light = child;
-            light.castShadow = true;
-            light.shadow.bias = -.003;
-        }
-    });
-    gltf.scene.position.set(-2, 0, 1.5);
-    mixers.push({ name: 'lockerMixer', mixer: new THREE.AnimationMixer(gltf.scene) });
-    lockerMixerIndex = mixers.findIndex((x) => x.name === 'lockerMixer');
-    let animationAction = mixers[lockerMixerIndex].mixer.clipAction(gltf.animations[0]);
-    animationActions.push({ name: 'lockerAnim', action: animationAction });
-    const index = animationActions.findIndex((x) => { x.name === 'lockerAnim'; });
-    // lockerActiveAction = animationActions[index].action
-    // lockerActiveAction.play()
-    console.log(gltf.scene);
-    lockerModelReady = true;
-    scene.add(gltf.scene);
-});
-const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-const points = [];
-points.push(new THREE.Vector3(0, 0, 0));
-points.push(new THREE.Vector3(0, 0, 0.25));
-const lineGeometry = new THREE.BufferGeometry();
-lineGeometry.setFromPoints(points);
-const line = new THREE.Mesh(lineGeometry, lineMaterial);
-scene.add(line);
 const cubeGeometry = new THREE.BoxGeometry(.2, .2, .2);
-const cubeMaterial = new MeshNormalMaterial();
+const cubeMaterial = new THREE.MeshNormalMaterial();
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -224,26 +207,40 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     render();
 }
-renderer.domElement.addEventListener('mousemove', onMouseMove, false);
-function onMouseMove(event) {
+renderer.domElement.addEventListener('dblclick', onDoubleClick, false);
+function onDoubleClick(event) {
     const mouseCoordinatesNormalized = {
         x: (event.clientX / window.innerWidth) * 2 - 1,
         y: -(event.clientY / window.innerHeight) * 2 + 1,
     };
     raycaster.setFromCamera(mouseCoordinatesNormalized, camera);
-    const intersects = raycaster.intersectObjects(objectsToRaycast, false);
+    intersects = raycaster.intersectObjects(objectsToRaycast, false);
     if (intersects.length > 0) {
-        // line.position.set(0, 0, 0)
-        // line.lookAt(intersects[0].face.normal)
-        // line.position.copy(intersects[0].point)
-        // let normalVector: THREE.Vector3 = new Vector3()
-        // normalVector.copy(intersects[0].face.normal)
-        // normalVector.transformDirection(intersects[0].object.matrixWorld)
-        // const cube: THREE.Mesh = new THREE.Mesh(cubeGeometry, cubeMaterial)
-        // cube.lookAt(normalVector)
-        // cube.rotateX(Math.PI / 2)
-        // cube.position.copy(intersects[0].point);
-        // scene.add(cube)
+        intersectedObject = intersects[0].object;
+        console.log(intersectedObject);
+        if (intersectedObject.name !== "plane") {
+            let normalVector = new THREE.Vector3();
+            normalVector.copy(intersects[0].face.normal);
+            normalVector.transformDirection(intersectedObject.matrixWorld);
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.lookAt(normalVector);
+            cube.rotateX(Math.PI / 2);
+            cube.position.copy(intersects[0].point);
+            cube.position.addScaledVector(normalVector, .1);
+            cube.castShadow = true;
+            scene.add(cube);
+        }
+        const intersectionPoint = intersects[0].point;
+        new TWEEN.Tween(orbitControls.target)
+            .to({ x: intersectionPoint.x, y: intersectionPoint.y, z: intersectionPoint.z }, 1000)
+            .easing(TWEEN.Easing.Cubic.InOut)
+            .start();
+        if (intersectedObject.name === "Kachujin") {
+            new TWEEN.Tween(kachujinModel.position);
+        }
+    }
+    else {
+        intersectedObject = null;
     }
 }
 const stats = Stats();
@@ -303,7 +300,6 @@ const swatguyFolder = animationsFolder.addFolder("Swat");
 animationsFolder.open();
 const vanguardClock = new THREE.Clock();
 const swatguyClock = new THREE.Clock();
-const lockerClock = new THREE.Clock();
 var animate = function () {
     requestAnimationFrame(animate);
     orbitControls.update();
@@ -314,9 +310,8 @@ var animate = function () {
     }
     if (swatModelReady)
         mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta());
-    if (lockerModelReady)
-        mixers[lockerMixerIndex].mixer.update(lockerClock.getDelta());
     render();
+    TWEEN.update();
     stats.update();
 };
 function render() {

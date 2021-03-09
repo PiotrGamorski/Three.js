@@ -5,7 +5,7 @@ import { FBXLoader } from '/jsm/loaders/FBXLoader'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader'
 import Stats from '/jsm/libs/stats.module'
 import { GUI } from '/jsm/libs/dat.gui.module'
-import { MeshNormalMaterial, Vector3 } from '/build/three.module.js'
+import { TWEEN } from '/jsm/libs/tween.module.min'
  
 const scene: THREE.Scene = new THREE.Scene()
 const axesHelper = new THREE.AxesHelper(5)
@@ -20,6 +20,11 @@ var light2 = new THREE.PointLight();
 light2.position.set(-2.5, 2.5, 2.5)
 light2.castShadow = true
 scene.add(light2);
+
+const raycaster: THREE.Raycaster = new THREE.Raycaster()
+let intersects: THREE.Intersection[]
+const objectsToRaycast = new Array()
+let intersectedObject: THREE.Object3D | null
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.set(0.8, 1.4, 1.0)
@@ -71,7 +76,9 @@ textures[1] = new THREE.TextureLoader().load('img/grid.png')
 const plane: THREE.Mesh = new THREE.Mesh(planeGeometry, new THREE.MeshPhongMaterial({map: textures[1]}))
 plane.rotateX(-Math.PI/2)
 plane.receiveShadow = true
+plane.name = "plane"
 scene.add(plane)
+objectsToRaycast.push(plane)
 
 type MixerObj = {
     name: string
@@ -82,15 +89,17 @@ type AnimationObj = {
     name: string;
     action: THREE.AnimationAction;
 }
+
+const fbxLoader: FBXLoader = new FBXLoader();
 let mixers: MixerObj[] = []
-let vanguardModelReady: boolean = false
 let animationActions: AnimationObj[] = []
+
+let vanguardModelReady: boolean = false
 let vanguardActiveAction: THREE.AnimationAction
 let vanguardLastAction: THREE.AnimationAction
 let vanguardMixerIndex: number
 let vanguardModel: THREE.Group
 let vanguardDragBox: THREE.Mesh
-const fbxLoader: FBXLoader = new FBXLoader();
 
 fbxLoader.load(
     'models/vanguard_t_choonyung.fbx',
@@ -113,9 +122,8 @@ fbxLoader.load(
         vanguardFolder.add(vanguardAnimations, 'default')
         vanguardActiveAction = animationActions[0].action;
 
+        scene.add(object)
         vanguardModel = object
-        object.remove
-        scene.add(vanguardModel)
 
         vanguardDragBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, .5), new THREE.MeshBasicMaterial({transparent: true, opacity: 0}))
         vanguardDragBox.geometry.translate(0, 0.9, 0)
@@ -180,19 +188,37 @@ fbxLoader.load(
     }
 )
 
-const raycaster: THREE.Raycaster = new THREE.Raycaster()
-const objectsToRaycast = []
+let kachujinModel: THREE.Object3D
+let kachujinModelReady: boolean = false
+
+fbxLoader.load(
+    'models/kachujin_g_rosales.fbx',
+    (object) => {
+        object.traverse(function (child) {
+            if((<THREE.Mesh>child).isMesh) {
+                let mesh = <THREE.Mesh>child
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.frustumCulled = false;
+                (mesh.material as THREE.MeshBasicMaterial).transparent = false;
+                objectsToRaycast.push(mesh)
+            }
+        })
+        object.scale.set(.009, .009, .009)
+        object.position.set(1.5, 0, 0.5)
+        object.rotateY(-Math.PI /5)
+        scene.add(object)
+        kachujinModel = object
+
+        kachujinModelReady = true;
+    }
+)
 
 const gltfLoader: GLTFLoader = new GLTFLoader()
 let swatModelReady: boolean = false
 let swatLastAction: THREE.AnimationAction
 let swatActiveAction: THREE.AnimationAction
 let swatguyMixerIndex: number
-
-let lockerModelReady: boolean = false
-let lockerLastAction: THREE.AnimationAction
-let lockerActiveAction: THREE.AnimationAction
-let lockerMixerIndex: number
 
 gltfLoader.load(
     'models/swatguy.glb',
@@ -203,7 +229,7 @@ gltfLoader.load(
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
                 (mesh.material as THREE.MeshBasicMaterial).transparent = false
-                objectsToRaycast.push(mesh) 
+                objectsToRaycast.push(mesh)
             }
         })
         gltf.scene.position.x = -1.5
@@ -226,7 +252,6 @@ gltfLoader.load(
             }
         )
         scene.add(gltf.scene)
-        //objectsToRaycast.push(gltf.scene)
 
         gltfLoader.load(
             'models/swatguy@flair.glb',
@@ -248,49 +273,8 @@ gltfLoader.load(
     }
 )
 
-gltfLoader.load(
-    'models/Locker_Anim.glb',
-    (gltf) => {
-        console.log('loaded locker')
-        gltf.scene.traverse((child) =>{
-            if((<THREE.Mesh>child).isMesh) {
-                let mesh = <THREE.Mesh>child;
-                mesh.receiveShadow = true;
-                mesh.castShadow = true;
-                (mesh.material as THREE.MeshBasicMaterial).transparent = false
-            }
-            if((<THREE.Light>child).isLight) {
-                let light = <THREE.Light>child
-                light.castShadow = true
-                light.shadow.bias = -.003
-            }
-        })
-        gltf.scene.position.set(-2, 0, 1.5)
-        mixers.push({name: 'lockerMixer', mixer: new THREE.AnimationMixer(gltf.scene)})
-        lockerMixerIndex = mixers.findIndex((x) => x.name === 'lockerMixer')
-        let animationAction = mixers[lockerMixerIndex].mixer.clipAction(gltf.animations[0])
-        animationActions.push({name: 'lockerAnim', action: animationAction})
-        const index = animationActions.findIndex((x) => {x.name === 'lockerAnim'})
-        // lockerActiveAction = animationActions[index].action
-        // lockerActiveAction.play()
-        console.log(gltf.scene)
-
-        lockerModelReady = true
-        scene.add(gltf.scene)
-    }
-)
-
-const lineMaterial: THREE.LineBasicMaterial = new THREE.LineBasicMaterial({color: 0xff0000})
-const points = []
-points.push(new THREE.Vector3(0, 0, 0))
-points.push(new THREE.Vector3(0, 0, 0.25))
-const lineGeometry: THREE.BufferGeometry = new THREE.BufferGeometry()
-lineGeometry.setFromPoints(points)
-const line: THREE.Mesh = new THREE.Mesh(lineGeometry, lineMaterial)
-scene.add(line)
-
 const cubeGeometry: THREE.BoxGeometry = new THREE.BoxGeometry(.2, .2, .2)
-const cubeMaterial: THREE.Material = new MeshNormalMaterial()
+const cubeMaterial: THREE.Material = new THREE.MeshNormalMaterial()
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -300,30 +284,44 @@ function onWindowResize() {
     render()
 }
 
-renderer.domElement.addEventListener('mousemove', onMouseMove, false)
-function onMouseMove(event: MouseEvent) {
+renderer.domElement.addEventListener('dblclick', onDoubleClick, false)
+function onDoubleClick(event: MouseEvent) {
     const mouseCoordinatesNormalized = {
         x: (event.clientX / window.innerWidth) * 2 - 1,
         y: -(event.clientY / window.innerHeight) * 2 + 1,
     }
     raycaster.setFromCamera(mouseCoordinatesNormalized, camera)
-    const intersects = raycaster.intersectObjects(objectsToRaycast, false)
-
+    intersects = raycaster.intersectObjects(objectsToRaycast, false)
+ 
     if(intersects.length > 0) {
-        // line.position.set(0, 0, 0)
-        // line.lookAt(intersects[0].face.normal)
-        // line.position.copy(intersects[0].point)
+        intersectedObject = intersects[0].object
+        console.log(intersectedObject)
 
-        // let normalVector: THREE.Vector3 = new Vector3()
-        // normalVector.copy(intersects[0].face.normal)
-        // normalVector.transformDirection(intersects[0].object.matrixWorld)
+        if(intersectedObject.name !== "plane") {
+        let normalVector: THREE.Vector3 = new THREE.Vector3()
+        normalVector.copy(intersects[0].face.normal)
+        normalVector.transformDirection(intersectedObject.matrixWorld)
         
-        // const cube: THREE.Mesh = new THREE.Mesh(cubeGeometry, cubeMaterial)
-        // cube.lookAt(normalVector)
-        // cube.rotateX(Math.PI / 2)
-        // cube.position.copy(intersects[0].point);
+        const cube: THREE.Mesh = new THREE.Mesh(cubeGeometry, cubeMaterial)
+        cube.lookAt(normalVector)
+        cube.rotateX(Math.PI / 2)
+        cube.position.copy(intersects[0].point);
+        cube.position.addScaledVector(normalVector, .1)
+        cube.castShadow = true
+        scene.add(cube)
+        }
 
-        // scene.add(cube)
+        const intersectionPoint = intersects[0].point
+        new TWEEN.Tween(orbitControls.target)
+            .to({x: intersectionPoint.x, y: intersectionPoint.y, z: intersectionPoint.z}, 1000)
+            .easing(TWEEN.Easing.Cubic.InOut)
+            .start()
+            
+        if(intersectedObject.name === "Kachujin") {
+            new TWEEN.Tween(kachujinModel.position)
+        }    
+    } else {
+        intersectedObject = null
     }
 }
 
@@ -390,20 +388,20 @@ animationsFolder.open()
 
 const vanguardClock: THREE.Clock = new THREE.Clock()
 const swatguyClock: THREE.Clock = new THREE.Clock()
-const lockerClock: THREE.Clock = new THREE.Clock()
 
 var animate = function () {
     requestAnimationFrame(animate)
-
     orbitControls.update()
+
     if(vanguardModelReady) {
         mixers[vanguardMixerIndex].mixer.update(vanguardClock.getDelta())
         vanguardModel.position.copy(vanguardDragBox.position)
         boxHelper.update()
     }
     if(swatModelReady) mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta())
-    if(lockerModelReady) mixers[lockerMixerIndex].mixer.update(lockerClock.getDelta())
+
     render()
+    TWEEN.update()
     stats.update()
 };
 
