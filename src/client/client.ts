@@ -32,6 +32,7 @@ camera.position.set(0.8, 1.4, 1.0)
 const renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
 document.body.appendChild(renderer.domElement)
 
 const orbitControls = new OrbitControls(camera, renderer.domElement)
@@ -311,17 +312,26 @@ function onDoubleClick(event: MouseEvent) {
         scene.add(cube)
         }
 
-        const desiredPiont = intersects[0].point
-        new TWEEN.Tween(orbitControls.target)
-            .to({x: desiredPiont.x, y: desiredPiont.y, z: desiredPiont.z}, 1000)
+        const desiredPoint = intersects[0].point
+         
+        if(intersectedObject.name === "plane") {
+            const distance = kachujinModel.position.distanceTo(desiredPoint)
+
+            new TWEEN.Tween(kachujinModel.position)
+            .to({x : desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 1000 * distance)
+            .onUpdate(() => {
+                orbitControls.target.set(
+                    kachujinModel.position.x,
+                    kachujinModel.position.y +1,
+                    kachujinModel.position.z)
+            })
+            .start()
+        }  else {
+            new TWEEN.Tween(orbitControls.target)
+            .to({x: desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 1000)
             .easing(TWEEN.Easing.Cubic.InOut)
             .start()
-            
-        if(intersectedObject.name === "plane") {
-            new TWEEN.Tween(kachujinModel.position)
-            .to({x : desiredPiont.x, y: desiredPiont.y, z: desiredPiont.z})
-            .start()
-        }    
+        } 
     } else {
         intersectedObject = null
     }
