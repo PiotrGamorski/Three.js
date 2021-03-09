@@ -230,13 +230,15 @@ function onDoubleClick(event) {
             cube.castShadow = true;
             scene.add(cube);
         }
-        const intersectionPoint = intersects[0].point;
+        const desiredPiont = intersects[0].point;
         new TWEEN.Tween(orbitControls.target)
-            .to({ x: intersectionPoint.x, y: intersectionPoint.y, z: intersectionPoint.z }, 1000)
+            .to({ x: desiredPiont.x, y: desiredPiont.y, z: desiredPiont.z }, 1000)
             .easing(TWEEN.Easing.Cubic.InOut)
             .start();
-        if (intersectedObject.name === "Kachujin") {
-            new TWEEN.Tween(kachujinModel.position);
+        if (intersectedObject.name === "plane") {
+            new TWEEN.Tween(kachujinModel.position)
+                .to({ x: desiredPiont.x, y: desiredPiont.y, z: desiredPiont.z })
+                .start();
         }
     }
     else {
