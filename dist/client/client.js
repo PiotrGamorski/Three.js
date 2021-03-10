@@ -13,14 +13,21 @@ var light1 = new THREE.PointLight();
 light1.position.set(2.5, 2.5, 2.5);
 light1.castShadow = true;
 scene.add(light1);
-var light2 = new THREE.PointLight();
-light2.position.set(-2.5, 2.5, 2.5);
+var light2 = new THREE.SpotLight();
+light2.position.set(-2.5, 5, 2.5);
+light2.angle = Math.PI / 8;
+light2.penumbra = 0.5;
 light2.castShadow = true;
+light2.shadow.mapSize.width = 1024;
+light2.shadow.mapSize.height = 1024;
+light2.shadow.camera.near = 0.5;
+light2.shadow.camera.far = 20;
 scene.add(light2);
 const raycaster = new THREE.Raycaster();
 let intersects;
 const objectsToRaycast = new Array();
 let intersectedObject;
+const targetQuaternion = new THREE.Quaternion();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0.8, 1.4, 1.0);
 const renderer = new THREE.WebGLRenderer();
@@ -201,6 +208,7 @@ gltfLoader.load('models/swatguy.glb', (gltf) => {
 });
 const cubeGeometry = new THREE.BoxGeometry(.2, .2, .2);
 const cubeMaterial = new THREE.MeshNormalMaterial();
+let wasDoubleClicked = false;
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -210,6 +218,7 @@ function onWindowResize() {
 }
 renderer.domElement.addEventListener('dblclick', onDoubleClick, false);
 function onDoubleClick(event) {
+    wasDoubleClicked = true;
     const mouseCoordinatesNormalized = {
         x: (event.clientX / window.innerWidth) * 2 - 1,
         y: -(event.clientY / window.innerHeight) * 2 + 1,
@@ -233,15 +242,22 @@ function onDoubleClick(event) {
         }
         const desiredPoint = intersects[0].point;
         if (intersectedObject.name === "plane") {
-            const distance = kachujinModel.position.distanceTo(desiredPoint);
-            new TWEEN.Tween(kachujinModel.position)
+            const kachujinModelPosition = kachujinModel.position;
+            const distance = kachujinModelPosition.distanceTo(desiredPoint);
+            const rotationMatrix = new THREE.Matrix4();
+            rotationMatrix.lookAt(desiredPoint, kachujinModelPosition, kachujinModel.up);
+            targetQuaternion.setFromRotationMatrix(rotationMatrix);
+            TWEEN.removeAll();
+            new TWEEN.Tween(kachujinModelPosition)
                 .to({ x: desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z }, 1000 * distance)
                 .onUpdate(() => {
                 orbitControls.target.set(kachujinModel.position.x, kachujinModel.position.y + 1, kachujinModel.position.z);
+                light2.target = kachujinModel;
             })
                 .start();
         }
         else {
+            TWEEN.removeAll();
             new TWEEN.Tween(orbitControls.target)
                 .to({ x: desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z }, 1000)
                 .easing(TWEEN.Easing.Cubic.InOut)
@@ -309,6 +325,7 @@ const swatguyFolder = animationsFolder.addFolder("Swat");
 animationsFolder.open();
 const vanguardClock = new THREE.Clock();
 const swatguyClock = new THREE.Clock();
+const kachujinClock = new THREE.Clock();
 var animate = function () {
     requestAnimationFrame(animate);
     orbitControls.update();
@@ -319,6 +336,11 @@ var animate = function () {
     }
     if (swatModelReady)
         mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta());
+    if (kachujinModelReady) {
+        if (wasDoubleClicked && !kachujinModel.quaternion.equals(targetQuaternion)) {
+            kachujinModel.quaternion.rotateTowards(targetQuaternion, kachujinClock.getDelta() * 1000);
+        }
+    }
     render();
     TWEEN.update();
     stats.update();

@@ -16,15 +16,22 @@ light1.position.set(2.5, 2.5, 2.5)
 light1.castShadow = true
 scene.add(light1);
 
-var light2 = new THREE.PointLight();
-light2.position.set(-2.5, 2.5, 2.5)
-light2.castShadow = true
+var light2 = new THREE.SpotLight();
+light2.position.set(-2.5, 5, 2.5)
+light2.angle = Math.PI / 8
+light2.penumbra = 0.5
+light2.castShadow = true;
+light2.shadow.mapSize.width = 1024;
+light2.shadow.mapSize.height = 1024;
+light2.shadow.camera.near = 0.5;
+light2.shadow.camera.far = 20
 scene.add(light2);
 
 const raycaster: THREE.Raycaster = new THREE.Raycaster()
 let intersects: THREE.Intersection[]
 const objectsToRaycast = new Array()
 let intersectedObject: THREE.Object3D | null
+const targetQuaternion: THREE.Quaternion = new THREE.Quaternion()
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.set(0.8, 1.4, 1.0)
@@ -190,7 +197,7 @@ fbxLoader.load(
 )
 
 let kachujinModel: THREE.Object3D
-let kachujinModelReady: boolean = false
+let kachujinModelReady = false
 
 fbxLoader.load(
     'models/kachujin_g_rosales.fbx',
@@ -276,6 +283,7 @@ gltfLoader.load(
 
 const cubeGeometry: THREE.BoxGeometry = new THREE.BoxGeometry(.2, .2, .2)
 const cubeMaterial: THREE.Material = new THREE.MeshNormalMaterial()
+let wasDoubleClicked = false
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -287,6 +295,7 @@ function onWindowResize() {
 
 renderer.domElement.addEventListener('dblclick', onDoubleClick, false)
 function onDoubleClick(event: MouseEvent) {
+    wasDoubleClicked = true
     const mouseCoordinatesNormalized = {
         x: (event.clientX / window.innerWidth) * 2 - 1,
         y: -(event.clientY / window.innerHeight) * 2 + 1,
@@ -315,18 +324,25 @@ function onDoubleClick(event: MouseEvent) {
         const desiredPoint = intersects[0].point
          
         if(intersectedObject.name === "plane") {
-            const distance = kachujinModel.position.distanceTo(desiredPoint)
+            const kachujinModelPosition: THREE.Vector3 = kachujinModel.position
+            const distance = kachujinModelPosition.distanceTo(desiredPoint)
+            const rotationMatrix: THREE.Matrix4 = new THREE.Matrix4()
+            rotationMatrix.lookAt(desiredPoint, kachujinModelPosition, kachujinModel.up)
+            targetQuaternion.setFromRotationMatrix(rotationMatrix)
 
-            new TWEEN.Tween(kachujinModel.position)
+            TWEEN.removeAll()
+            new TWEEN.Tween(kachujinModelPosition)
             .to({x : desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 1000 * distance)
             .onUpdate(() => {
                 orbitControls.target.set(
                     kachujinModel.position.x,
                     kachujinModel.position.y +1,
                     kachujinModel.position.z)
+                light2.target = kachujinModel    
             })
             .start()
         }  else {
+            TWEEN.removeAll()
             new TWEEN.Tween(orbitControls.target)
             .to({x: desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 1000)
             .easing(TWEEN.Easing.Cubic.InOut)
@@ -400,6 +416,7 @@ animationsFolder.open()
 
 const vanguardClock: THREE.Clock = new THREE.Clock()
 const swatguyClock: THREE.Clock = new THREE.Clock()
+const kachujinClock: THREE.Clock = new THREE.Clock()
 
 var animate = function () {
     requestAnimationFrame(animate)
@@ -410,7 +427,14 @@ var animate = function () {
         vanguardModel.position.copy(vanguardDragBox.position)
         boxHelper.update()
     }
+
     if(swatModelReady) mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta())
+
+    if(kachujinModelReady) {
+        if(wasDoubleClicked && !kachujinModel.quaternion.equals(targetQuaternion)) {
+            kachujinModel.quaternion.rotateTowards(targetQuaternion, kachujinClock.getDelta() * 1000)
+        }
+    }
 
     render()
     TWEEN.update()
