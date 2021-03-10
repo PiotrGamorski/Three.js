@@ -6,6 +6,9 @@ import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
 import Stats from '/jsm/libs/stats.module';
 import { GUI } from '/jsm/libs/dat.gui.module';
 import { TWEEN } from '/jsm/libs/tween.module.min';
+import myClass from './test.js';
+const dupa = new myClass();
+console.log(dupa.func);
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
@@ -249,7 +252,7 @@ function onDoubleClick(event) {
             targetQuaternion.setFromRotationMatrix(rotationMatrix);
             TWEEN.removeAll();
             new TWEEN.Tween(kachujinModelPosition)
-                .to({ x: desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z }, 1000 * distance)
+                .to({ x: desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z }, 2000 / 2.2 * distance)
                 .onUpdate(() => {
                 orbitControls.target.set(kachujinModel.position.x, kachujinModel.position.y + 1, kachujinModel.position.z);
                 light2.target = kachujinModel;
@@ -336,9 +339,10 @@ var animate = function () {
     }
     if (swatModelReady)
         mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta());
+    const delta = kachujinClock.getDelta();
     if (kachujinModelReady) {
         if (wasDoubleClicked && !kachujinModel.quaternion.equals(targetQuaternion)) {
-            kachujinModel.quaternion.rotateTowards(targetQuaternion, kachujinClock.getDelta() * 1000);
+            kachujinModel.quaternion.rotateTowards(targetQuaternion, delta * 10);
         }
     }
     render();

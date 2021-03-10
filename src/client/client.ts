@@ -6,7 +6,11 @@ import { GLTFLoader } from '/jsm/loaders/GLTFLoader'
 import Stats from '/jsm/libs/stats.module'
 import { GUI } from '/jsm/libs/dat.gui.module'
 import { TWEEN } from '/jsm/libs/tween.module.min'
- 
+import myClass from './test.js'
+
+const dupa = new myClass();
+console.log(dupa.func)
+
 const scene: THREE.Scene = new THREE.Scene()
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
@@ -31,6 +35,7 @@ const raycaster: THREE.Raycaster = new THREE.Raycaster()
 let intersects: THREE.Intersection[]
 const objectsToRaycast = new Array()
 let intersectedObject: THREE.Object3D | null
+
 const targetQuaternion: THREE.Quaternion = new THREE.Quaternion()
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -332,7 +337,7 @@ function onDoubleClick(event: MouseEvent) {
 
             TWEEN.removeAll()
             new TWEEN.Tween(kachujinModelPosition)
-            .to({x : desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 1000 * distance)
+            .to({x : desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 2000 / 2.2 * distance)
             .onUpdate(() => {
                 orbitControls.target.set(
                     kachujinModel.position.x,
@@ -430,9 +435,10 @@ var animate = function () {
 
     if(swatModelReady) mixers[swatguyMixerIndex].mixer.update(swatguyClock.getDelta())
 
+    const delta = kachujinClock.getDelta()
     if(kachujinModelReady) {
         if(wasDoubleClicked && !kachujinModel.quaternion.equals(targetQuaternion)) {
-            kachujinModel.quaternion.rotateTowards(targetQuaternion, kachujinClock.getDelta() * 1000)
+            kachujinModel.quaternion.rotateTowards(targetQuaternion, delta * 10)
         }
     }
 
