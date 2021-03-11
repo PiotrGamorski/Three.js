@@ -203,6 +203,9 @@ fbxLoader.load(
 
 let kachujinModel: THREE.Object3D
 let kachujinModelReady = false
+let kachujinMixerIndex: number
+let kachujinActiveAction: THREE.AnimationAction
+let kachujinLastAction: THREE.AnimationAction
 
 fbxLoader.load(
     'models/kachujin_g_rosales.fbx',
@@ -220,8 +223,29 @@ fbxLoader.load(
         object.scale.set(.009, .009, .009)
         object.position.set(1.5, 0, 0.5)
         object.rotateY(-Math.PI /5)
+        mixers.push({name: 'kachujinMixer', mixer: new THREE.AnimationMixer(object)})
+        kachujinMixerIndex = mixers.findIndex((x) => x.name === 'kachujinMixer')
         scene.add(object)
         kachujinModel = object
+
+        fbxLoader.load(
+            'models/kachujin@idle.fbx',
+            (object) => {
+                let animationAction: THREE.AnimationAction = mixers[kachujinMixerIndex].mixer.clipAction(object.animations[0])
+                animationActions.push({name: 'kachujin@idle', action: animationAction})
+                kachujinActiveAction = animationAction
+                kachujinActiveAction.play()
+            }
+        )
+
+        fbxLoader.load(
+            'models/kachujin@walk.fbx',
+            (object) => {
+                object.animations[0].tracks.shift()
+                let animationAction: THREE.AnimationAction =  mixers[kachujinMixerIndex].mixer.clipAction(object.animations[0])
+                animationActions.push({name: 'kachujin@walk', action: animationAction})   
+            }
+        )
 
         kachujinModelReady = true;
     }
@@ -334,16 +358,22 @@ function onDoubleClick(event: MouseEvent) {
             const rotationMatrix: THREE.Matrix4 = new THREE.Matrix4()
             rotationMatrix.lookAt(desiredPoint, kachujinModelPosition, kachujinModel.up)
             targetQuaternion.setFromRotationMatrix(rotationMatrix)
+            const index = animationActions.findIndex((x) => x.name === 'kachujin@walk')
+            const walkAction = animationActions[index].action
+            setKachujinAction(walkAction)
 
             TWEEN.removeAll()
             new TWEEN.Tween(kachujinModelPosition)
-            .to({x : desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 2000 / 2.2 * distance)
+            .to({x : desiredPoint.x, y: desiredPoint.y, z: desiredPoint.z}, 2000 / 2.6 * distance)
             .onUpdate(() => {
                 orbitControls.target.set(
                     kachujinModel.position.x,
                     kachujinModel.position.y +1,
                     kachujinModel.position.z)
                 light2.target = kachujinModel    
+            })
+            .onComplete(() => {
+                setKachujinAction(kachujinLastAction)
             })
             .start()
         }  else {
@@ -413,6 +443,17 @@ const setSwatguyAction = (actionToExecute: THREE.AnimationAction) => {
     }
 }
 
+const setKachujinAction = (actionToExecute: THREE.AnimationAction) => {
+    if(actionToExecute !== kachujinActiveAction) {
+        kachujinLastAction = kachujinActiveAction
+        kachujinActiveAction = actionToExecute
+        kachujinLastAction.fadeOut(.5)
+        kachujinActiveAction.reset()
+        kachujinActiveAction.fadeIn(.5)
+        kachujinActiveAction.play()
+    }
+}
+
 const gui = new GUI()
 const animationsFolder = gui.addFolder("Animations")
 const vanguardFolder = animationsFolder.addFolder("Vanguard")
@@ -437,6 +478,7 @@ var animate = function () {
 
     const delta = kachujinClock.getDelta()
     if(kachujinModelReady) {
+        mixers[kachujinMixerIndex].mixer.update(delta)
         if(wasDoubleClicked && !kachujinModel.quaternion.equals(targetQuaternion)) {
             kachujinModel.quaternion.rotateTowards(targetQuaternion, delta * 10)
         }
