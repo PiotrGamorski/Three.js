@@ -1,7 +1,7 @@
-class myClass {
+class Kachujin {
     constructor() { }
     func() {
         console.log("dupa");
     }
 }
-export default myClass;
+export default Kachujin;

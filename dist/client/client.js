@@ -6,9 +6,6 @@ import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
 import Stats from '/jsm/libs/stats.module';
 import { GUI } from '/jsm/libs/dat.gui.module';
 import { TWEEN } from '/jsm/libs/tween.module.min';
-import myClass from './test.js';
-const dupa = new myClass();
-console.log(dupa.func);
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
@@ -44,6 +41,7 @@ orbitControls.target.set(0, 1, 0);
 const sceneMeshes = new Array();
 let boxHelper;
 const dragControls = new DragControls(sceneMeshes, camera, renderer.domElement);
+//const kachujinObj = new Kachujin();
 dragControls.addEventListener('hoveron', () => {
     boxHelper.visible = true;
     orbitControls.enabled = false;

@@ -6,10 +6,7 @@ import { GLTFLoader } from '/jsm/loaders/GLTFLoader'
 import Stats from '/jsm/libs/stats.module'
 import { GUI } from '/jsm/libs/dat.gui.module'
 import { TWEEN } from '/jsm/libs/tween.module.min'
-import myClass from './test.js'
-
-const dupa = new myClass();
-console.log(dupa.func)
+import Kachujin from './Kachujin.js'
 
 const scene: THREE.Scene = new THREE.Scene()
 const axesHelper = new THREE.AxesHelper(5)
@@ -54,6 +51,8 @@ orbitControls.target.set(0, 1, 0)
 const sceneMeshes: THREE.Mesh[] = new Array()
 let boxHelper: THREE.BoxHelper
 const dragControls = new DragControls(sceneMeshes, camera, renderer.domElement)
+
+//const kachujinObj = new Kachujin();
 
 dragControls.addEventListener('hoveron', () => {
     boxHelper.visible = true
